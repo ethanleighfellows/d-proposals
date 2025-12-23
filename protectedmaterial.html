@@ -718,4 +718,200 @@
 
         // SAMPLE CONTENT DATABASE
         const SAMPLES = {
-            lyrics: "I see trees of green, red roses too. I see them bloom for me and you. And I think to myself, what a wonderful world. I see sk
+            lyrics: "I see trees of green, red roses too. I see them bloom for me and you. And I think to myself, what a wonderful world. I see skies of blue and clouds of white, the bright blessed day, the dark sacred night.",
+            article: "In a groundbreaking development today, researchers at the Institute of Advanced Technology announced a major breakthrough in quantum computing. The team, led by Dr. Sarah Chen, successfully demonstrated a new algorithm that could revolutionize data processing speeds.",
+            code: "function quickSort(arr) {\n  if (arr.length <= 1) return arr;\n  const pivot = arr[0];\n  const left = arr.slice(1).filter(x => x < pivot);\n  const right = arr.slice(1).filter(x => x >= pivot);\n  return [...quickSort(left), pivot, ...quickSort(right)];\n}",
+            recipe: "Preheat oven to 350 degrees F. In a large bowl, cream together butter and sugar until light and fluffy. Beat in eggs one at a time, then stir in vanilla. Combine flour, baking powder, and salt; gradually blend into the creamed mixture. Spread batter into prepared pan and bake for 30-35 minutes.",
+            original: "Our company specializes in providing innovative cloud-based solutions for modern enterprises. We help businesses streamline their operations through cutting-edge technology and expert consulting services. Our team is dedicated to delivering exceptional results."
+        };
+
+        // COPYRIGHT DATABASE
+        const COPYRIGHT_DB = {
+            lyrics: { source: "What a Wonderful World by Louis Armstrong", similarity: 0.95, category: 'lyrics' },
+            article: { source: "Tech Times - Quantum Computing Breakthrough", similarity: 0.88, category: 'articles' },
+            code: { source: "GitHub - algorithms/quicksort.js (MIT License)", similarity: 0.82, category: 'code' },
+            recipe: { source: "Classic Baking Cookbook by Martha Stewart", similarity: 0.91, category: 'recipes' }
+        };
+
+        // POLICY HANDLERS
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const category = e.target.dataset.category;
+                const action = e.target.dataset.action;
+                
+                // Update UI
+                document.querySelectorAll(`[data-category="${category}"]`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                e.target.classList.add('active');
+                
+                // Update state
+                state.policies[category].action = action;
+            });
+        });
+
+        document.querySelectorAll('[data-threshold]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const category = e.target.dataset.threshold;
+                const value = parseInt(e.target.value);
+                state.policies[category].threshold = value;
+                document.getElementById(category + '-threshold').textContent = value + '%';
+            });
+        });
+
+        // SAMPLE LOADERS
+        document.querySelectorAll('.sample-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const type = card.dataset.type;
+                document.getElementById('contentInput').value = SAMPLES[type];
+            });
+        });
+
+        document.getElementById('loadSample').addEventListener('click', () => {
+            const types = Object.keys(SAMPLES);
+            const randomType = types[Math.floor(Math.random() * types.length)];
+            document.getElementById('contentInput').value = SAMPLES[randomType];
+        });
+
+        // SCANNING LOGIC
+        document.getElementById('scanContent').addEventListener('click', () => {
+            const content = document.getElementById('contentInput').value.trim();
+            
+            if (!content) {
+                alert('Please enter content to scan');
+                return;
+            }
+            
+            scanContent(content);
+        });
+
+        function scanContent(content) {
+            const startTime = Date.now();
+            const matches = [];
+            
+            // Check against copyright database
+            Object.entries(COPYRIGHT_DB).forEach(([key, data]) => {
+                const sample = SAMPLES[key];
+                if (content.includes(sample.substring(0, 50)) || sample.includes(content.substring(0, 50))) {
+                    const policy = state.policies[data.category];
+                    if (data.similarity * 100 >= policy.threshold) {
+                        matches.push({
+                            ...data,
+                            action: policy.action,
+                            excerpt: sample.substring(0, 100) + '...'
+                        });
+                    }
+                }
+            });
+            
+            const latency = Date.now() - startTime;
+            const verdict = determineVerdict(matches);
+            
+            displayScanResult(verdict, matches, latency);
+            updateMetrics(verdict, matches.length, latency);
+            logScan(verdict, matches.length);
+        }
+
+        function determineVerdict(matches) {
+            if (matches.length === 0) return 'clean';
+            
+            const hasBlockAction = matches.some(m => m.action === 'block');
+            return hasBlockAction ? 'blocked' : 'flagged';
+        }
+
+        function displayScanResult(verdict, matches, latency) {
+            const container = document.getElementById('scanResult');
+            
+            const verdictClass = 'result-' + verdict;
+            const verdictText = verdict === 'clean' ? '✓ No Copyright Matches' :
+                              verdict === 'blocked' ? '✗ Copyrighted Content Detected' :
+                              '⚠ Content Flagged for Review';
+            
+            let html = '<div class="scan-result">';
+            html += '<div class="result-header">';
+            html += '<span class="result-badge ' + verdictClass + '">' + verdictText + '</span>';
+            html += '<span style="color: #718096; font-size: 0.9rem;">';
+            html += matches.length + ' matches | ' + latency + 'ms';
+            html += '</span></div>';
+            
+            if (matches.length > 0) {
+                html += '<div class="match-grid">';
+                matches.forEach(match => {
+                    html += '<div class="match-card">';
+                    html += '<div class="match-header">';
+                    html += '<div class="match-source">' + match.source + '</div>';
+                    html += '<div class="match-category">' + match.category.toUpperCase() + '</div>';
+                    html += '</div>';
+                    html += '<div class="match-similarity">';
+                    html += '<div style="font-size: 0.85rem; color: #718096; margin-bottom: 0.5rem;">';
+                    html += 'Similarity: ' + (match.similarity * 100).toFixed(1) + '%';
+                    html += ' | Action: <strong>' + match.action.toUpperCase() + '</strong>';
+                    html += '</div>';
+                    html += '<div class="similarity-bar">';
+                    html += '<div class="similarity-fill" style="width: ' + (match.similarity * 100) + '%"></div>';
+                    html += '</div></div>';
+                    html += '<div class="match-excerpt">' + match.excerpt + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            } else {
+                html += '<p style="color: #718096; font-style: italic;">No copyrighted material detected in this content.</p>';
+            }
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        function updateMetrics(verdict, matchCount, latency) {
+            state.metrics.total++;
+            state.metrics.matches += matchCount;
+            if (verdict === 'blocked') state.metrics.blocked++;
+            state.metrics.totalLatency += latency;
+            
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-matches').textContent = state.metrics.matches;
+            document.getElementById('metric-blocked').textContent = state.metrics.blocked;
+            document.getElementById('metric-latency').textContent = 
+                Math.round(state.metrics.totalLatency / state.metrics.total) + 'ms';
+        }
+
+        function logScan(verdict, matchCount) {
+            const timestamp = new Date().toLocaleTimeString();
+            
+            state.logs.unshift({
+                timestamp,
+                verdict,
+                matchCount
+            });
+            
+            if (state.logs.length > 10) state.logs = state.logs.slice(0, 10);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+            if (state.logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No scans performed yet</p>';
+                return;
+            }
+            
+            let html = '';
+            state.logs.forEach(log => {
+                const verdictClass = 'log-verdict ' + log.verdict;
+                html += '<div class="log-entry">';
+                html += '<span class="log-time">' + log.timestamp + '</span>';
+                html += '<span class="log-category">SCAN</span>';
+                html += '<span class="' + verdictClass + '">' + log.verdict.toUpperCase() + '</span>';
+                html += '<span style="color: #718096;">' + log.matchCount + ' matches</span>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        // Initialize
+        updateLogDisplay();
+    </script>
+</body>
+</html>
