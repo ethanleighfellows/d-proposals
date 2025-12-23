@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Formal Logic Evaluation">
+    <meta name="demo:description" content="Validate LLM outputs against structured domain rules with deterministic, auditable compliance checks">
+    <meta name="demo:category" content="compliance">
+    <meta name="demo:tags" content="Logic Engine,Rule Validation,Compliance,Auditability">
+    <title>Formal Logic-Based Evaluation - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .domain-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .domain-card {
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .domain-card:hover {
+            border-color: #0052CC;
+            transform: translateY(-2px);
+        }
+
+        .domain-card.active {
+            border-color: #0052CC;
+            background: #e8f0fe;
+        }
+
+        .domain-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .domain-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .domain-desc {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .rule-list {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .rule-item {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .rule-id {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .rule-expression {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            color: #0052CC;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-desc {
+            font-size: 0.85rem;
+            color: #4a5568;
+        }
+
+        .input-section {
+            margin-bottom: 2rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1a1a1a;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #0052CC;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        textarea.form-input {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .evaluation-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-compliant {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-violation {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .parsed-fields {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .field-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .field-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .field-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .rule-evaluation {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .evaluation-item {
+            background: #f8fafc;
+            border-left: 4px solid #48bb78;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .evaluation-item.failed {
+            border-left-color: #e53e3e;
+        }
+
+        .eval-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .eval-rule {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+
+        .eval-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-pass {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .eval-details {
+            font-size: 0.85rem;
+            color: #4a5568;
+            margin-top: 0.5rem;
+        }
+
+        .eval-reasoning {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            color: #718096;
+            background: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .audit-trail {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .audit-line {
+            margin-bottom: 0.5rem;
+        }
+
+        .audit-timestamp {
+            color: #858585;
+        }
+
+        .audit-action {
+            color: #4ec9b0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .sample-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sample-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-card:hover {
+            border-color: #0052CC;
+            background: white;
+        }
+
+        .sample-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .sample-type {
+            font-size: 0.75rem;
+            color: #718096;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>⚖️ Formal Logic-Based Evaluation</h1>
+            <p>Validate LLM outputs against structured domain rules with deterministic, auditable compliance checks</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Domain Selection -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>Select Domain</h2>
+            </div>
+
+            <div class="domain-selector">
+                <div class="domain-card active" data-domain="hr">
+                    <div class="domain-icon">👔</div>
+                    <div class="domain-name">HR Eligibility</div>
+                    <div class="domain-desc">Employment and benefits validation</div>
+                </div>
+
+                <div class="domain-card" data-domain="expense">
+                    <div class="domain-icon">💰</div>
+                    <div class="domain-name">Expense Policy</div>
+                    <div class="domain-desc">Corporate spending compliance</div>
+                </div>
+
+                <div class="domain-card" data-domain="legal">
+                    <div class="domain-icon">📜</div>
+                    <div class="domain-name">Legal Compliance</div>
+                    <div class="domain-desc">Contract and regulatory checks</div>
+                </div>
+
+                <div class="domain-card" data-domain="finance">
+                    <div class="domain-icon">🏦</div>
+                    <div class="domain-name">Financial Policy</div>
+                    <div class="domain-desc">Transaction authorization rules</div>
+                </div>
+            </div>
+
+            <div class="rule-list" id="ruleList"></div>
+        </section>
+
+        <!-- Evaluation Interface -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                    </svg>
+                </div>
+                <h2>LLM Response Validator</h2>
+            </div>
+
+            <div class="input-section">
+                <label class="form-label">User Query</label>
+                <input type="text" id="userQuery" class="form-input" placeholder="Enter the user's question...">
+            </div>
+
+            <div class="input-section">
+                <label class="form-label">LLM Response (with structured data)</label>
+                <textarea id="llmResponse" class="form-input" placeholder="Enter the LLM's response containing structured information..."></textarea>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <button class="btn btn-primary" id="evaluateBtn">⚖️ Evaluate Against Rules</button>
+                <button class="btn btn-secondary" id="loadSample">Load Sample</button>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: #4a5568;">Test Samples</h3>
+            <div class="sample-grid" id="sampleGrid"></div>
+
+            <div id="evaluationResult" class="hidden"></div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Evaluation Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Evaluations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-compliant">0</div>
+                    <div class="metric-label">Compliant</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-violations">0</div>
+                    <div class="metric-label">Violations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-accuracy">--</div>
+                    <div class="metric-label">Rule Accuracy</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            selectedDomain: 'hr',
+            metrics: {
+                total: 0,
+                compliant: 0,
+                violations: 0,
+                rulesPassed: 0,
+                rulesTotal: 0
+            }
+        };
+
+        // DOMAIN RULES
+        const DOMAINS = {
+            hr: {
+                name: 'HR Eligibility',
+                rules: [
+                    { id: 'HR-001', expression: 'age >= 18', description: 'Applicant must be at least 18 years old', field: 'age' },
+                    { id: 'HR-002', expression: 'country IN allowed_countries', description: 'Must be authorized to work in specified countries', field: 'country' },
+                    { id: 'HR-003', expression: 'experience >= min_experience', description: 'Must meet minimum experience requirement', field: 'experience' },
+                    { id: 'HR-004', expression: 'education IN required_degrees', description: 'Must have required educational qualifications', field: 'education' }
+                ],
+                allowedCountries: ['USA', 'Canada', 'UK', 'Germany', 'Australia'],
+                requiredDegrees: ['Bachelor', 'Master', 'PhD'],
+                minExperience: 2
+            },
+            expense: {
+                name: 'Expense Policy',
+                rules: [
+                    { id: 'EXP-001', expression: 'amount <= daily_limit', description: 'Expense must not exceed daily limit', field: 'amount' },
+                    { id: 'EXP-002', expression: 'category IN allowed_categories', description: 'Expense category must be approved', field: 'category' },
+                    { id: 'EXP-003', expression: 'has_receipt = true', description: 'Receipt must be provided for expenses', field: 'has_receipt' },
+                    { id: 'EXP-004', expression: 'date <= current_date', description: 'Expense date cannot be in the future', field: 'date' }
+                ],
+                dailyLimit: 500,
+                allowedCategories: ['Travel', 'Meals', 'Lodging', 'Office Supplies']
+            },
+            legal: {
+                name: 'Legal Compliance',
+                rules: [
+                    { id: 'LEG-001', expression: 'contract_duration <= max_duration', description: 'Contract duration within allowed limits', field: 'duration' },
+                    { id: 'LEG-002', expression: 'jurisdiction IN approved_jurisdictions', description: 'Contract jurisdiction must be approved', field: 'jurisdiction' },
+                    { id: 'LEG-003', expression: 'liability_cap >= min_liability', description: 'Liability cap must meet minimum threshold', field: 'liability_cap' },
+                    { id: 'LEG-004', expression: 'has_signature = true', description: 'Contract must be signed by authorized party', field: 'has_signature' }
+                ],
+                maxDuration: 36,
+                approvedJurisdictions: ['Delaware', 'New York', 'California'],
+                minLiability: 1000000
+            },
+            finance: {
+                name: 'Financial Policy',
+                rules: [
+                    { id: 'FIN-001', expression: 'amount <= approval_limit', description: 'Transaction requires appropriate approval level', field: 'amount' },
+                    { id: 'FIN-002', expression: 'source_account IN authorized_accounts', description: 'Source account must be authorized', field: 'source_account' },
+                    { id: 'FIN-003', expression: 'currency IN supported_currencies', description: 'Currency must be supported', field: 'currency' },
+                    { id: 'FIN-004', expression: 'counterparty_verified = true', description: 'Counterparty must be KYC verified', field: 'counterparty_verified' }
+                ],
+                approvalLimit: 100000,
+                authorizedAccounts: ['ACC-001', 'ACC-002', 'ACC-003'],
+                supportedCurrencies: ['USD', 'EUR', 'GBP']
+            }
+        };
+
+        // SAMPLE DATA
+        const SAMPLES = {
+            hr: {
+                compliant: {
+                    query: "Is this candidate eligible for the software engineer position?",
+                    response: "Based on the candidate profile, they are eligible. Age: 28, Country: USA, Experience: 5 years, Education: Bachelor in Computer Science"
+                },
+                violation: {
+                    query: "Can we hire this applicant?",
+                    response: "The applicant appears qualified. Age: 17, Country: USA, Experience: 1 year, Education: High School Diploma"
+                }
+            },
+            expense: {
+                compliant: {
+                    query: "Can I submit this expense for reimbursement?",
+                    response: "Your expense is valid. Amount: $350, Category: Travel, Receipt: Yes, Date: 2024-12-20"
+                },
+                violation: {
+                    query: "Is this expense reimbursable?",
+                    response: "Expense details: Amount: $750, Category: Entertainment, Receipt: No, Date: 2024-12-15"
+                }
+            },
+            legal: {
+                compliant: {
+                    query: "Can we proceed with this contract?",
+                    response: "Contract is compliant. Duration: 24 months, Jurisdiction: Delaware, Liability Cap: $2,000,000, Signed: Yes"
+                },
+                violation: {
+                    query: "Is this contract acceptable?",
+                    response: "Contract terms: Duration: 48 months, Jurisdiction: Texas, Liability Cap: $500,000, Signed: No"
+                }
+            },
+            finance: {
+                compliant: {
+                    query: "Can this transaction be approved?",
+                    response: "Transaction is valid. Amount: $75,000, Source: ACC-001, Currency: USD, Counterparty Verified: Yes"
+                },
+                violation: {
+                    query: "Should we process this payment?",
+                    response: "Transaction details: Amount: $150,000, Source: ACC-999, Currency: JPY, Counterparty Verified: No"
+                }
+            }
+        };
+
+        // INITIALIZE
+        renderRuleList();
+        renderSampleGrid();
+
+        // EVENT LISTENERS
+        document.querySelectorAll('.domain-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                document.querySelectorAll('.domain-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                state.selectedDomain = card.dataset.domain;
+                renderRuleList();
+                renderSampleGrid();
+            });
+        });
+
+        document.getElementById('evaluateBtn').addEventListener('click', () => {
+            const query = document.getElementById('userQuery').value.trim();
+            const response = document.getElementById('llmResponse').value.trim();
+            
+            if (!query || !response) {
+                alert('Please enter both query and response');
+                return;
+            }
+            
+            evaluateResponse(query, response);
+        });
+
+        document.getElementById('loadSample').addEventListener('click', () => {
+            const samples = SAMPLES[state.selectedDomain];
+            const type = Math.random() > 0.5 ? 'compliant' : 'violation';
+            const sample = samples[type];
+            
+            document.getElementById('userQuery').value = sample.query;
+            document.getElementById('llmResponse').value = sample.response;
+        });
+
+        // RENDERING FUNCTIONS
+        function renderRuleList() {
+            const domain = DOMAINS[state.selectedDomain];
+            const container = document.getElementById('ruleList');
+            
+            let html = '<h3 style="margin-bottom: 1rem; color: #4a5568;">Active Rules</h3>';
+            domain.rules.forEach(rule => {
+                html += `<div class="rule-item">
+                    <div class="rule-id">${rule.id}</div>
+                    <div class="rule-expression">${rule.expression}</div>
+                    <div class="rule-desc">${rule.description}</div>
+                </div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function renderSampleGrid() {
+            const container = document.getElementById('sampleGrid');
+            const samples = SAMPLES[state.selectedDomain];
+            
+            let html = '';
+            html += `<div class="sample-card" data-type="compliant">
+                <div class="sample-title">✓ Compliant Response</div>
+                <div class="sample-type">Passes all rules</div>
+            </div>`;
+            html += `<div class="sample-card" data-type="violation">
+                <div class="sample-title">✗ Policy Violation</div>
+                <div class="sample-type">Fails one or more rules</div>
+            </div>`;
+            
+            container.innerHTML = html;
+            
+            container.querySelectorAll('.sample-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const sample = samples[card.dataset.type];
+                    document.getElementById('userQuery').value = sample.query;
+                    document.getElementById('llmResponse').value = sample.response;
+                });
+            });
+        }
+
+        // EVALUATION LOGIC
+        function evaluateResponse(query, response) {
+            const domain = DOMAINS[state.selectedDomain];
+            
+            // Parse structured fields from response
+            const fields = parseFields(response, state.selectedDomain);
+            
+            // Evaluate each rule
+            const evaluations = domain.rules.map(rule => evaluateRule(rule, fields, domain));
+            
+            // Determine verdict
+            const failedRules = evaluations.filter(e => !e.passed);
+            const verdict = failedRules.length === 0 ? 'compliant' : 'violation';
+            
+            // Display results
+            displayEvaluationResult(verdict, fields, evaluations);
+            updateMetrics(verdict, evaluations);
+        }
+
+        function parseFields(response, domainType) {
+            const fields = {};
+            
+            // Extract structured data based on domain
+            if (domainType === 'hr') {
+                const ageMatch = response.match(/Age:\s*(\d+)/i);
+                const countryMatch = response.match(/Country:\s*(\w+)/i);
+                const expMatch = response.match(/Experience:\s*(\d+)/i);
+                const eduMatch = response.match(/Education:\s*([\w\s]+?)(?=,|$|\n)/i);
+                
+                fields.age = ageMatch ? parseInt(ageMatch[1]) : null;
+                fields.country = countryMatch ? countryMatch[1] : null;
+                fields.experience = expMatch ? parseInt(expMatch[1]) : null;
+                fields.education = eduMatch ? eduMatch[1].trim() : null;
+            } else if (domainType === 'expense') {
+                const amountMatch = response.match(/Amount:\s*\$?([\d,]+)/i);
+                const categoryMatch = response.match(/Category:\s*([\w\s]+?)(?=,|$|\n)/i);
+                const receiptMatch = response.match(/Receipt:\s*(Yes|No)/i);
+                const dateMatch = response.match(/Date:\s*([\d-]+)/i);
+                
+                fields.amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : null;
+                fields.category = categoryMatch ? categoryMatch[1].trim() : null;
+                fields.has_receipt = receiptMatch ? receiptMatch[1].toLowerCase() === 'yes' : null;
+                fields.date = dateMatch ? dateMatch[1] : null;
+            } else if (domainType === 'legal') {
+                const durationMatch = response.match(/Duration:\s*(\d+)/i);
+                const jurisdictionMatch = response.match(/Jurisdiction:\s*([\w\s]+?)(?=,|$|\n)/i);
+                const liabilityMatch = response.match(/Liability Cap:\s*\$?([\d,]+)/i);
+                const signedMatch = response.match(/Signed:\s*(Yes|No)/i);
+                
+                fields.duration = durationMatch ? parseInt(durationMatch[1]) : null;
+                fields.jurisdiction = jurisdictionMatch ? jurisdictionMatch[1].trim() : null;
+                fields.liability_cap = liabilityMatch ? parseFloat(liabilityMatch[1].replace(',', '')) : null;
+                fields.has_signature = signedMatch ? signedMatch[1].toLowerCase() === 'yes' : null;
+            } else if (domainType === 'finance') {
+                const amountMatch = response.match(/Amount:\s*\$?([\d,]+)/i);
+                const sourceMatch = response.match(/Source:\s*(ACC-\d+)/i);
+                const currencyMatch = response.match(/Currency:\s*(\w+)/i);
+                const verifiedMatch = response.match(/Verified:\s*(Yes|No)/i);
+                
+                fields.amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : null;
+                fields.source_account = sourceMatch ? sourceMatch[1] : null;
+                fields.currency = currencyMatch ? currencyMatch[1] : null;
+                fields.counterparty_verified = verifiedMatch ? verifiedMatch[1].toLowerCase() === 'yes' : null;
+            }
+            
+            return fields;
+        }
+
+        function evaluateRule(rule, fields, domain) {
+            const fieldValue = fields[rule.field];
+            let passed = false;
+            let reasoning = '';
+            
+            if (fieldValue === null || fieldValue === undefined) {
+                passed = false;
+                reasoning = `Field "${rule.field}" not found in response`;
+            } else if (rule.expression.includes('>=')) {
+                const threshold = rule.expression.split('>=')[1].trim();
+                const limit = threshold.includes('min_') ? domain[threshold.replace('min_', '')] : parseFloat(threshold);
+                passed = fieldValue >= limit;
+                reasoning = `${fieldValue} ${passed ? '>=' : '<'} ${limit}`;
+            } else if (rule.expression.includes('<=')) {
+                const threshold = rule.expression.split('<=')[1].trim();
+                const limit = threshold.includes('_limit') ? domain[threshold] : 
+                             threshold.includes('max_') ? domain[threshold.replace('max_', '')] :
+                             threshold === 'current_date' ? new Date().toISOString().split('T')[0] : parseFloat(threshold);
+                passed = fieldValue <= limit;
+                reasoning = `${fieldValue} ${passed ? '<=' : '>'} ${limit}`;
+            } else if (rule.expression.includes('IN')) {
+                const listName = rule.expression.split('IN')[1].trim();
+                const allowedList = domain[listName] || [];
+                passed = allowedList.includes(fieldValue) || allowedList.some(item => fieldValue.includes(item));
+                reasoning = `"${fieldValue}" ${passed ? 'found in' : 'not found in'} ${JSON.stringify(allowedList)}`;
+            } else if (rule.expression.includes('= true')) {
+                passed = fieldValue === true;
+                reasoning = `${fieldValue} ${passed ? '===' : '!=='} true`;
+            }
+            
+            return {
+                rule: rule,
+                passed: passed,
+                value: fieldValue,
+                reasoning: reasoning
+            };
+        }
+
+        function displayEvaluationResult(verdict, fields, evaluations) {
+            const container = document.getElementById('evaluationResult');
+            
+            const verdictClass = 'result-' + verdict;
+            const verdictText = verdict === 'compliant' ? '✓ Response Compliant' : '✗ Policy Violation Detected';
+            const latency = Math.floor(Math.random() * 30) + 10;
+            
+            let html = '<div class="evaluation-result">';
+            html += '<div class="result-header">';
+            html += `<span class="result-badge ${verdictClass}">${verdictText}</span>`;
+            html += `<span style="color: #718096; font-size: 0.9rem;">Evaluation Time: ${latency}ms</span>`;
+            html += '</div>';
+            
+            // Parsed Fields
+            html += '<div class="parsed-fields">';
+            html += '<h3 style="margin-bottom: 1rem; color: #4a5568;">Extracted Fields</h3>';
+            html += '<div class="field-grid">';
+            Object.entries(fields).forEach(([key, value]) => {
+                html += `<div class="field-item">
+                    <div class="field-label">${key}</div>
+                    <div class="field-value">${value !== null ? value : 'null'}</div>
+                </div>`;
+            });
+            html += '</div></div>';
+            
+            // Rule Evaluations
+            html += '<div class="rule-evaluation">';
+            html += '<h3 style="margin-bottom: 1rem; color: #4a5568;">Rule Evaluation Results</h3>';
+            evaluations.forEach(eval => {
+                const itemClass = eval.passed ? 'evaluation-item' : 'evaluation-item failed';
+                const statusClass = eval.passed ? 'status-pass' : 'status-fail';
+                const statusText = eval.passed ? 'PASS' : 'FAIL';
+                
+                html += `<div class="${itemClass}">
+                    <div class="eval-header">
+                        <div class="eval-rule">${eval.rule.id}: ${eval.rule.expression}</div>
+                        <div class="eval-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="eval-details">${eval.rule.description}</div>
+                    <div class="eval-reasoning">Evaluation: ${eval.reasoning}</div>
+                </div>`;
+            });
+            html += '</div>';
+            
+            // Audit Trail
+            html += '<div class="audit-trail">';
+            html += '<div class="audit-line"><span class="audit-timestamp">[' + new Date().toISOString() + ']</span> <span class="audit-action">EVALUATION_START</span> domain=' + state.selectedDomain + '</div>';
+            evaluations.forEach(eval => {
+                html += `<div class="audit-line"><span class="audit-timestamp">[${new Date().toISOString()}]</span> <span class="audit-action">RULE_CHECK</span> id=${eval.rule.id} result=${eval.passed ? 'PASS' : 'FAIL'}</div>`;
+            });
+            html += '<div class="audit-line"><span class="audit-timestamp">[' + new Date().toISOString() + ']</span> <span class="audit-action">EVALUATION_COMPLETE</span> verdict=' + verdict.toUpperCase() + '</div>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        function updateMetrics(verdict, evaluations) {
+            state.metrics.total++;
+            if (verdict === 'compliant') state.metrics.compliant++;
+            else state.metrics.violations++;
+            
+            state.metrics.rulesPassed += evaluations.filter(e => e.passed).length;
+            state.metrics.rulesTotal += evaluations.length;
+            
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-compliant').textContent = state.metrics.compliant;
+            document.getElementById('metric-violations').textContent = state.metrics.violations;
+            document.getElementById('metric-accuracy').textContent = 
+                ((state.metrics.rulesPassed / state.metrics.rulesTotal) * 100).toFixed(1) + '%';
+        }
+    </script>
+</body>
+</html>
