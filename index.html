@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamo AI - Feature Proposal Demos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 3rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .intro-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #0052CC;
+        }
+
+        .intro-section h2 {
+            color: #0052CC;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .intro-section p {
+            color: #4a5568;
+            font-size: 1rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+            min-height: 200px;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            text-decoration: none;
+            display: block;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 82, 204, 0.15);
+            border-color: #0052CC;
+        }
+
+        .demo-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .demo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+
+        .demo-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .demo-card h3 {
+            color: #1a1a1a;
+            font-size: 1.3rem;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .demo-card p {
+            color: #4a5568;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .demo-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .demo-tag {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .demo-link {
+            display: inline-flex;
+            align-items: center;
+            color: #0052CC;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-top: 1rem;
+            text-decoration: none;
+        }
+
+        .demo-link svg {
+            margin-left: 0.5rem;
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s ease;
+        }
+
+        .demo-card:hover .demo-link svg {
+            transform: translateX(4px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e8f0fe;
+            border-top: 4px solid #0052CC;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fff5f5;
+            border: 1px solid #fc8181;
+            border-radius: 8px;
+            padding: 1.5rem;
+            color: #c53030;
+            margin: 2rem 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: #0052CC;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>Feature Proposal Demos</h1>
+            <p>Explore interactive demonstrations of proposed Dynamo AI features and enhancements</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="intro-section">
+            <h2>Welcome to the Demo Index</h2>
+            <p>This page serves as a central hub for all feature proposal demonstrations. Each demo showcases a potential enhancement to DynamoGuard's capabilities, designed to improve AI security, compliance, and observability. Click on any card below to explore the interactive demonstration.</p>
+        </section>
+
+        <div id="demoGrid" class="demo-grid">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading demos from repository...</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>Dynamo AI Feature Proposals &copy; 2025 | <a href="https://dynamo.ai">dynamo.ai</a></p>
+    </footer>
+
+    <script>
+        // ========================================
+        // CONFIGURATION - Update these values
+        // ========================================
+        const CONFIG = {
+            githubOwner: 'ethanleighfellows',  // e.g., 'octocat'
+            githubRepo: 'd-proposals',         // e.g., 'feature-demos'
+            githubBranch: 'main',                 // or 'master' depending on your default branch
+            excludeFiles: ['index.html']          // Files to exclude from the demo list
+        };
+
+        // ========================================
+        // ICON MAPPING - Maps categories to SVG icons
+        // ========================================
+        const ICON_MAP = {
+            'security': '<path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>',
+            'compliance': '<path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>',
+            'observability': '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>',
+            'hallucination': '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>',
+            'analytics': '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',
+            'policy': '<path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>',
+            'default': '<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>'
+        };
+
+        // ========================================
+        // MAIN FUNCTIONS
+        // ========================================
+
+        /**
+         * Fetches the list of files from the GitHub repository
+         */
+        async function fetchRepoFiles() {
+            const url = `https://api.github.com/repos/${CONFIG.githubOwner}/${CONFIG.githubRepo}/git/trees/${CONFIG.githubBranch}?recursive=1`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                return data.tree || [];
+            } catch (error) {
+                console.error('Error fetching repository files:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Fetches the content of an HTML file to extract metadata
+         */
+        async function fetchFileMetadata(filePath) {
+            const url = `https://raw.githubusercontent.com/${CONFIG.githubOwner}/${CONFIG.githubRepo}/${CONFIG.githubBranch}/${filePath}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) return null;
+                
+                const html = await response.text();
+                return parseHTMLMetadata(html, filePath);
+            } catch (error) {
+                console.error(`Error fetching ${filePath}:`, error);
+                return null;
+            }
+        }
+
+        /**
+         * Parses HTML content to extract metadata from meta tags
+         * Looks for:
+         * - <meta name="demo:title" content="...">
+         * - <meta name="demo:description" content="...">
+         * - <meta name="demo:category" content="...">
+         * - <meta name="demo:tags" content="tag1,tag2,tag3">
+         */
+        function parseHTMLMetadata(html, filePath) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Extract metadata from meta tags
+            const title = doc.querySelector('meta[name="demo:title"]')?.content 
+                       || doc.querySelector('title')?.textContent 
+                       || formatFileName(filePath);
+            
+            const description = doc.querySelector('meta[name="demo:description"]')?.content 
+                             || 'Interactive feature demonstration';
+            
+            const category = doc.querySelector('meta[name="demo:category"]')?.content 
+                          || 'default';
+            
+            const tagsContent = doc.querySelector('meta[name="demo:tags"]')?.content || '';
+            const tags = tagsContent ? tagsContent.split(',').map(t => t.trim()).filter(Boolean) : [category];
+            
+            return { title, description, category, tags };
+        }
+
+        /**
+         * Formats a filename into a readable title
+         */
+        function formatFileName(filePath) {
+            const fileName = filePath.split('/').pop().replace('.html', '');
+            return fileName
+                .split(/[-_]/)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        }
+
+        /**
+         * Creates a demo card element
+         */
+        function createDemoCard(filePath, metadata) {
+            const { title, description, category, tags } = metadata;
+            const icon = ICON_MAP[category.toLowerCase()] || ICON_MAP.default;
+            
+            const card = document.createElement('a');
+            card.href = `./${filePath}`;
+            card.className = 'demo-card';
+            
+            card.innerHTML = `
+                <div class="demo-card-header">
+                    <div class="demo-icon">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            ${icon}
+                        </svg>
+                    </div>
+                    <h3>${title}</h3>
+                </div>
+                <p>${description}</p>
+                <div class="demo-meta">
+                    ${tags.map(tag => `<span class="demo-tag">${tag}</span>`).join('')}
+                </div>
+                <span class="demo-link">
+                    View Demo
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                    </svg>
+                </span>
+            `;
+            
+            return card;
+        }
+
+        /**
+         * Displays an error message
+         */
+        function showError(message) {
+            const grid = document.getElementById('demoGrid');
+            grid.innerHTML = `
+                <div class="error">
+                    <strong>Error loading demos:</strong> ${message}
+                    <br><br>
+                    Please check the configuration in the script section and ensure:
+                    <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                        <li>GitHub username and repository name are correct</li>
+                        <li>The repository is public or you have access</li>
+                        <li>The branch name is correct</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        /**
+         * Main initialization function
+         */
+        async function initializeDemoIndex() {
+            const grid = document.getElementById('demoGrid');
+            
+            try {
+                // Fetch all files from the repository
+                const files = await fetchRepoFiles();
+                
+                // Filter for HTML files (excluding index.html and files in excludeFiles)
+                const htmlFiles = files.filter(file => 
+                    file.type === 'blob' && 
+                    file.path.endsWith('.html') && 
+                    !CONFIG.excludeFiles.includes(file.path.split('/').pop())
+                );
+                
+                if (htmlFiles.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #718096;">
+                            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No demo files found</p>
+                            <p style="font-size: 0.9rem;">Add HTML files to your repository to see them listed here</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Clear loading message
+                grid.innerHTML = '';
+                
+                // Fetch metadata for each HTML file and create cards
+                const demoPromises = htmlFiles.map(async (file) => {
+                    const metadata = await fetchFileMetadata(file.path);
+                    if (metadata) {
+                        return { filePath: file.path, metadata };
+                    }
+                    return null;
+                });
+                
+                const demos = (await Promise.all(demoPromises)).filter(Boolean);
+                
+                // Sort demos alphabetically by title
+                demos.sort((a, b) => a.metadata.title.localeCompare(b.metadata.title));
+                
+                // Create and append demo cards
+                demos.forEach(({ filePath, metadata }) => {
+                    const card = createDemoCard(filePath, metadata);
+                    grid.appendChild(card);
+                });
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError(error.message);
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDemoIndex);
+        } else {
+            initializeDemoIndex();
+        }
+    </script>
+</body>
+</html>
