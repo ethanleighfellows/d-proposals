@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Copyright Detection">
+    <meta name="demo:description" content="Scan LLM-generated text and code against databases of copyrighted material to prevent infringement">
+    <meta name="demo:category" content="compliance">
+    <meta name="demo:tags" content="Copyright,Compliance,IP Protection,Content Safety">
+    <title>Copyright & Protected Material Detection - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .policy-category {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e2e8f0;
+        }
+
+        .policy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .policy-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1rem;
+        }
+
+        .policy-desc {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+
+        .action-selector {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn.active {
+            background: #0052CC;
+            color: white;
+            border-color: #0052CC;
+        }
+
+        .action-btn.block.active {
+            background: #e53e3e;
+            border-color: #e53e3e;
+        }
+
+        .action-btn.flag.active {
+            background: #f6ad55;
+            border-color: #f6ad55;
+        }
+
+        .threshold-control {
+            margin-top: 1rem;
+        }
+
+        .threshold-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            color: #4a5568;
+        }
+
+        .threshold-value {
+            font-weight: 600;
+            color: #0052CC;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0052CC;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0052CC;
+            cursor: pointer;
+            border: none;
+        }
+
+        .content-editor {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 0.95rem;
+            color: #1a1a1a;
+            min-height: 200px;
+            width: 100%;
+            resize: vertical;
+        }
+
+        .content-editor:focus {
+            outline: none;
+            border-color: #0052CC;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .scan-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-clean {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-blocked {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-flagged {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .match-grid {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .match-card {
+            background: white;
+            border-left: 4px solid #e53e3e;
+            padding: 1.5rem;
+            border-radius: 6px;
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .match-source {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1rem;
+        }
+
+        .match-category {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #fee;
+            color: #e53e3e;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .match-similarity {
+            margin-bottom: 1rem;
+        }
+
+        .similarity-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .similarity-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #e53e3e 0%, #f56565 100%);
+            transition: width 0.3s ease;
+        }
+
+        .match-excerpt {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            color: #4a5568;
+            margin-top: 1rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #718096;
+            margin-right: 1rem;
+        }
+
+        .log-category {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-verdict {
+            font-weight: 600;
+        }
+
+        .log-verdict.clean {
+            color: #155724;
+        }
+
+        .log-verdict.blocked {
+            color: #721c24;
+        }
+
+        .log-verdict.flagged {
+            color: #856404;
+        }
+
+        .sample-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sample-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-card:hover {
+            border-color: #0052CC;
+            background: white;
+        }
+
+        .sample-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .sample-type {
+            font-size: 0.75rem;
+            color: #718096;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>©️ Copyright & Protected Material Detection</h1>
+            <p>Scan LLM-generated text and code against databases of copyrighted material to prevent infringement</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Policy Configuration Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>Copyright Detection Policies</h2>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Content Categories</h3>
+                    
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">🎵 Song Lyrics</span>
+                        </div>
+                        <p class="policy-desc">Detect verbatim reproduction of copyrighted song lyrics</p>
+                        <div class="action-selector">
+                            <button class="action-btn block active" data-category="lyrics" data-action="block">Block</button>
+                            <button class="action-btn flag" data-category="lyrics" data-action="flag">Flag</button>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Similarity Threshold</span>
+                                <span class="threshold-value" id="lyrics-threshold">80%</span>
+                            </div>
+                            <input type="range" min="50" max="100" step="5" value="80" data-threshold="lyrics">
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">📰 News Articles</span>
+                        </div>
+                        <p class="policy-desc">Flag substantial reproduction of journalistic content</p>
+                        <div class="action-selector">
+                            <button class="action-btn block active" data-category="articles" data-action="block">Block</button>
+                            <button class="action-btn flag" data-category="articles" data-action="flag">Flag</button>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Similarity Threshold</span>
+                                <span class="threshold-value" id="articles-threshold">75%</span>
+                            </div>
+                            <input type="range" min="50" max="100" step="5" value="75" data-threshold="articles">
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">👨‍🍳 Recipes</span>
+                        </div>
+                        <p class="policy-desc">Detect copyrighted recipe instructions and descriptions</p>
+                        <div class="action-selector">
+                            <button class="action-btn block" data-category="recipes" data-action="block">Block</button>
+                            <button class="action-btn flag active" data-category="recipes" data-action="flag">Flag</button>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Similarity Threshold</span>
+                                <span class="threshold-value" id="recipes-threshold">85%</span>
+                            </div>
+                            <input type="range" min="50" max="100" step="5" value="85" data-threshold="recipes">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Code & Web Content</h3>
+                    
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">💻 Source Code</span>
+                        </div>
+                        <p class="policy-desc">Identify code matching GitHub repositories with restrictive licenses</p>
+                        <div class="action-selector">
+                            <button class="action-btn block" data-category="code" data-action="block">Block</button>
+                            <button class="action-btn flag active" data-category="code" data-action="flag">Flag</button>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Similarity Threshold</span>
+                                <span class="threshold-value" id="code-threshold">70%</span>
+                            </div>
+                            <input type="range" min="50" max="100" step="5" value="70" data-threshold="code">
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">🌐 Web Content</span>
+                        </div>
+                        <p class="policy-desc">Selected web content exceeding 200 character excerpts</p>
+                        <div class="action-selector">
+                            <button class="action-btn block active" data-category="web" data-action="block">Block</button>
+                            <button class="action-btn flag" data-category="web" data-action="flag">Flag</button>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Similarity Threshold</span>
+                                <span class="threshold-value" id="web-threshold">80%</span>
+                            </div>
+                            <input type="range" min="50" max="100" step="5" value="80" data-threshold="web">
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">📚 Books & Literature</span>
+                        </div>
+                        <p class="policy-desc">Detect excerpts from copyrighted books and literature</p>
+                        <div class="action-selector">
+                            <button class="action-btn block active" data-category="books" data-action="block">Block</button>
+                            <button class="action-btn flag" data-category="books" data-action="flag">Flag</button>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Similarity Threshold</span>
+                                <span class="threshold-value" id="books-threshold">85%</span>
+                            </div>
+                            <input type="range" min="50" max="100" step="5" value="85" data-threshold="books">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content Scanner Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                </div>
+                <h2>Copyright Scanner</h2>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">LLM-Generated Content</label>
+                <textarea id="contentInput" class="content-editor" placeholder="Paste LLM-generated text or code here to scan for copyrighted material..."></textarea>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <button class="btn btn-primary" id="scanContent">🔍 Scan for Copyright</button>
+                <button class="btn btn-secondary" id="loadSample">Load Sample</button>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: #4a5568;">Test Samples</h3>
+            <div class="sample-grid">
+                <div class="sample-card" data-type="lyrics">
+                    <div class="sample-title">🎵 Song Lyrics</div>
+                    <div class="sample-type">Copyrighted content</div>
+                </div>
+                <div class="sample-card" data-type="article">
+                    <div class="sample-title">📰 News Excerpt</div>
+                    <div class="sample-type">Journalistic content</div>
+                </div>
+                <div class="sample-card" data-type="code">
+                    <div class="sample-title">💻 Source Code</div>
+                    <div class="sample-type">GitHub repository</div>
+                </div>
+                <div class="sample-card" data-type="recipe">
+                    <div class="sample-title">👨‍🍳 Recipe</div>
+                    <div class="sample-type">Cookbook content</div>
+                </div>
+                <div class="sample-card" data-type="original">
+                    <div class="sample-title">✓ Original Content</div>
+                    <div class="sample-type">No copyright match</div>
+                </div>
+            </div>
+
+            <div id="scanResult" class="hidden"></div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Telemetry & Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Content Scanned</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-matches">0</div>
+                    <div class="metric-label">Matches Found</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-blocked">0</div>
+                    <div class="metric-label">Blocked</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-latency">--</div>
+                    <div class="metric-label">Avg Latency</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Detection Log</h3>
+            <div id="logContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            policies: {
+                lyrics: { action: 'block', threshold: 80 },
+                articles: { action: 'block', threshold: 75 },
+                recipes: { action: 'flag', threshold: 85 },
+                code: { action: 'flag', threshold: 70 },
+                web: { action: 'block', threshold: 80 },
+                books: { action: 'block', threshold: 85 }
+            },
+            metrics: {
+                total: 0,
+                matches: 0,
+                blocked: 0,
+                totalLatency: 0
+            },
+            logs: []
+        };
+
+        // SAMPLE CONTENT DATABASE
+        const SAMPLES = {
+            lyrics: "I see trees of green, red roses too. I see them bloom for me and you. And I think to myself, what a wonderful world. I see sk
