@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Fairness Evaluation">
+    <meta name="demo:description" content="Monitor and debug disparate outcomes across demographic groups with automated bias detection">
+    <meta name="demo:category" content="compliance">
+    <meta name="demo:tags" content="Fairness,Bias Detection,Responsible AI,Compliance">
+    <title>Fairness Evaluation & Bias Detection - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .scenario-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .scenario-card {
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scenario-card:hover {
+            border-color: #0052CC;
+            transform: translateY(-2px);
+        }
+
+        .scenario-card.active {
+            border-color: #0052CC;
+            background: #e8f0fe;
+        }
+
+        .scenario-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .scenario-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .scenario-desc {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .metric-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .metric-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .metric-btn.active {
+            background: #0052CC;
+            color: white;
+            border-color: #0052CC;
+        }
+
+        .fairness-dashboard {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .parity-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .cohort-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 2px solid #e2e8f0;
+        }
+
+        .cohort-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .cohort-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1a1a1a;
+        }
+
+        .cohort-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-reference {
+            background: #e8f0fe;
+            color: #0052CC;
+        }
+
+        .badge-protected {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .outcome-bar {
+            margin: 1rem 0;
+        }
+
+        .outcome-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 40px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .bar-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            transition: width 0.3s ease;
+        }
+
+        .bar-approved {
+            background: #48bb78;
+        }
+
+        .bar-denied {
+            background: #e53e3e;
+        }
+
+        .parity-metric {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value.fair {
+            color: #48bb78;
+        }
+
+        .metric-value.concern {
+            color: #f6ad55;
+        }
+
+        .metric-value.unfair {
+            color: #e53e3e;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .alert-box {
+            background: #fff3cd;
+            border-left: 4px solid #f6ad55;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-box.critical {
+            background: #f8d7da;
+            border-left-color: #e53e3e;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-desc {
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .feature-attribution {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .attribution-list {
+            margin-top: 1rem;
+        }
+
+        .attribution-item {
+            background: #f8fafc;
+            border-left: 4px solid #e2e8f0;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+
+        .attribution-item.high {
+            border-left-color: #e53e3e;
+        }
+
+        .attribution-item.medium {
+            border-left-color: #f6ad55;
+        }
+
+        .attribution-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-name {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .impact-score {
+            padding: 0.25rem 0.75rem;
+            background: #fee;
+            color: #e53e3e;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .feature-details {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-card-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #718096;
+            margin-right: 1rem;
+        }
+
+        .log-scenario {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-status {
+            font-weight: 600;
+        }
+
+        .log-status.fair {
+            color: #155724;
+        }
+
+        .log-status.concern {
+            color: #856404;
+        }
+
+        .log-status.alert {
+            color: #721c24;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>⚖️ Fairness Evaluation & Bias Detection</h1>
+            <p>Monitor and debug disparate outcomes across demographic groups with automated bias detection</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Scenario Selection -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h2>Evaluation Scenario</h2>
+            </div>
+
+            <div class="scenario-selector">
+                <div class="scenario-card active" data-scenario="lending">
+                    <div class="scenario-icon">💳</div>
+                    <div class="scenario-title">Loan Approval</div>
+                    <div class="scenario-desc">Credit decisions across gender groups</div>
+                </div>
+
+                <div class="scenario-card" data-scenario="hiring">
+                    <div class="scenario-icon">👔</div>
+                    <div class="scenario-title">Resume Screening</div>
+                    <div class="scenario-desc">Hiring recommendations by ethnicity</div>
+                </div>
+
+                <div class="scenario-card" data-scenario="risk">
+                    <div class="scenario-icon">⚠️</div>
+                    <div class="scenario-title">Risk Assessment</div>
+                    <div class="scenario-desc">Fraud detection across age groups</div>
+                </div>
+
+                <div class="scenario-card" data-scenario="content">
+                    <div class="scenario-icon">📝</div>
+                    <div class="scenario-title">Content Moderation</div>
+                    <div class="scenario-desc">Flagging rates by demographic</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Fairness Metrics</h3>
+            <div class="metric-selector">
+                <button class="metric-btn active" data-metric="demographic-parity">Demographic Parity</button>
+                <button class="metric-btn" data-metric="equalized-odds">Equalized Odds</button>
+                <button class="metric-btn" data-metric="equal-opportunity">Equal Opportunity</button>
+            </div>
+
+            <button class="btn btn-primary" id="runEvaluation">▶ Run Fairness Evaluation</button>
+        </section>
+
+        <!-- Fairness Dashboard -->
+        <section class="demo-section" id="dashboardSection" class="hidden">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Fairness Analysis Dashboard</h2>
+            </div>
+
+            <div id="alertContainer"></div>
+
+            <div class="fairness-dashboard">
+                <h3 style="margin-bottom: 1.5rem; color: #4a5568;">Cohort Comparison</h3>
+                <div class="parity-comparison" id="cohortComparison"></div>
+            </div>
+
+            <!-- Feature Attribution -->
+            <div class="feature-attribution">
+                <h3 style="margin-bottom: 1rem; color: #4a5568;">Root Cause Analysis</h3>
+                <p style="color: #718096; font-size: 0.9rem; margin-bottom: 1rem;">Features and segments contributing most to fairness disparities</p>
+                <div class="attribution-list" id="attributionList"></div>
+            </div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Monitoring Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-card-value" id="metric-evaluations">0</div>
+                    <div class="metric-card-label">Evaluations Run</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-card-value" id="metric-alerts">0</div>
+                    <div class="metric-card-label">Fairness Alerts</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-card-value" id="metric-cohorts">0</div>
+                    <div class="metric-card-label">Cohorts Monitored</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-card-value" id="metric-features">0</div>
+                    <div class="metric-card-label">Features Analyzed</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Evaluation Log</h3>
+            <div id="logContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            selectedScenario: 'lending',
+            selectedMetric: 'demographic-parity',
+            metrics: {
+                evaluations: 0,
+                alerts: 0,
+                cohorts: 0,
+                features: 0
+            },
+            logs: []
+        };
+
+        // SCENARIO DATA
+        const SCENARIOS = {
+            lending: {
+                name: 'Loan Approval',
+                attribute: 'Gender',
+                reference: 'Male',
+                protected: 'Female',
+                referenceData: { approved: 720, denied: 280, total: 1000 },
+                protectedData: { approved: 580, denied: 420, total: 1000 },
+                features: [
+                    { name: 'Credit Score < 650', impact: 0.92, details: '34% approval gap for low credit scores' },
+                    { name: 'Income Source: Freelance', impact: 0.78, details: '28% disparity in freelance worker approvals' },
+                    { name: 'Loan Amount > $50k', impact: 0.65, details: '22% gap for high-value loans' },
+                    { name: 'First-time Borrower', impact: 0.51, details: '15% difference in new applicant approvals' }
+                ]
+            },
+            hiring: {
+                name: 'Resume Screening',
+                attribute: 'Ethnicity',
+                reference: 'White',
+                protected: 'Black',
+                referenceData: { approved: 680, denied: 320, total: 1000 },
+                protectedData: { approved: 520, denied: 480, total: 1000 },
+                features: [
+                    { name: 'University Tier', impact: 0.88, details: '31% gap based on university prestige signals' },
+                    { name: 'Career Gap > 1 year', impact: 0.74, details: '26% disparity for employment gaps' },
+                    { name: 'Location: Urban vs Rural', impact: 0.61, details: '19% difference by geographic origin' },
+                    { name: 'Years of Experience', impact: 0.48, details: '14% gap in experience evaluation' }
+                ]
+            },
+            risk: {
+                name: 'Risk Assessment',
+                attribute: 'Age Group',
+                reference: '35-50',
+                protected: '18-34',
+                referenceData: { approved: 750, denied: 250, total: 1000 },
+                protectedData: { approved: 550, denied: 450, total: 1000 },
+                features: [
+                    { name: 'Account Age < 2 years', impact: 0.85, details: '29% higher risk flagging for new accounts' },
+                    { name: 'Transaction Velocity', impact: 0.71, details: '24% gap in high-frequency transaction flags' },
+                    { name: 'Payment Method: Digital Wallet', impact: 0.58, details: '18% disparity for mobile payments' },
+                    { name: 'Time of Day: Late Night', impact: 0.45, details: '12% difference in after-hours activity' }
+                ]
+            },
+            content: {
+                name: 'Content Moderation',
+                attribute: 'Dialect',
+                reference: 'Standard English',
+                protected: 'AAVE',
+                referenceData: { approved: 850, denied: 150, total: 1000 },
+                protectedData: { approved: 620, denied: 380, total: 1000 },
+                features: [
+                    { name: 'Slang Detection', impact: 0.94, details: '37% over-flagging of colloquial expressions' },
+                    { name: 'Capitalization Patterns', impact: 0.82, details: '30% disparity in non-standard formatting' },
+                    { name: 'Punctuation Usage', impact: 0.67, details: '21% gap in punctuation style interpretation' },
+                    { name: 'Sentence Length', impact: 0.53, details: '16% difference in complex sentence handling' }
+                ]
+            }
+        };
+
+        // EVENT LISTENERS
+        document.querySelectorAll('.scenario-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                state.selectedScenario = card.dataset.scenario;
+            });
+        });
+
+        document.querySelectorAll('.metric-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.selectedMetric = btn.dataset.metric;
+            });
+        });
+
+        document.getElementById('runEvaluation').addEventListener('click', () => {
+            runFairnessEvaluation();
+        });
+
+        // FAIRNESS EVALUATION
+        function runFairnessEvaluation() {
+            const scenario = SCENARIOS[state.selectedScenario];
+            
+            // Calculate fairness metrics
+            const refApprovalRate = scenario.referenceData.approved / scenario.referenceData.total;
+            const protApprovalRate = scenario.protectedData.approved / scenario.protectedData.total;
+            const parityGap = Math.abs(refApprovalRate - protApprovalRate);
+            const parityRatio = protApprovalRate / refApprovalRate;
+            
+            // Determine alert level
+            let alertLevel = 'none';
+            let alertMessage = '';
+            
+            if (parityGap > 0.15) {
+                alertLevel = 'critical';
+                alertMessage = `Critical fairness violation detected: ${(parityGap * 100).toFixed(1)}% approval rate gap between ${scenario.reference} and ${scenario.protected} groups. This exceeds the 15% threshold and may indicate discriminatory outcomes.`;
+            } else if (parityGap > 0.10) {
+                alertLevel = 'warning';
+                alertMessage = `Fairness concern identified: ${(parityGap * 100).toFixed(1)}% approval rate gap between cohorts. Investigation recommended to identify contributing factors.`;
+            }
+            
+            // Display results
+            displayDashboard(scenario, refApprovalRate, protApprovalRate, parityGap, parityRatio, alertLevel, alertMessage);
+            updateMetrics(alertLevel);
+            logEvaluation(scenario.name, alertLevel, parityGap);
+        }
+
+        function displayDashboard(scenario, refRate, protRate, gap, ratio, alertLevel, alertMessage) {
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            
+            // Display alert if needed
+            const alertContainer = document.getElementById('alertContainer');
+            if (alertLevel !== 'none') {
+                const alertClass = alertLevel === 'critical' ? 'alert-box critical' : 'alert-box';
+                alertContainer.innerHTML = `
+                    <div class="${alertClass}">
+                        <div class="alert-title">⚠️ Fairness Alert: ${scenario.name}</div>
+                        <div class="alert-desc">${alertMessage}</div>
+                    </div>
+                `;
+            } else {
+                alertContainer.innerHTML = '';
+            }
+            
+            // Display cohort comparison
+            const cohortHtml = `
+                <div class="cohort-card">
+                    <div class="cohort-header">
+                        <div class="cohort-name">${scenario.reference} (Reference)</div>
+                        <div class="cohort-badge badge-reference">BASELINE</div>
+                    </div>
+                    <div class="outcome-bar">
+                        <div class="outcome-label">
+                            <span>Outcomes</span>
+                            <span>n = ${scenario.referenceData.total}</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar-segment bar-approved" style="width: ${refRate * 100}%">
+                                ${scenario.referenceData.approved} (${(refRate * 100).toFixed(1)}%)
+                            </div>
+                            <div class="bar-segment bar-denied" style="width: ${(1 - refRate) * 100}%">
+                                ${scenario.referenceData.denied}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="parity-metric">
+                        <div class="metric-value fair">${(refRate * 100).toFixed(1)}%</div>
+                        <div class="metric-label">Approval Rate</div>
+                    </div>
+                </div>
+                
+                <div class="cohort-card">
+                    <div class="cohort-header">
+                        <div class="cohort-name">${scenario.protected} (Protected)</div>
+                        <div class="cohort-badge badge-protected">MONITORED</div>
+                    </div>
+                    <div class="outcome-bar">
+                        <div class="outcome-label">
+                            <span>Outcomes</span>
+                            <span>n = ${scenario.protectedData.total}</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar-segment bar-approved" style="width: ${protRate * 100}%">
+                                ${scenario.protectedData.approved} (${(protRate * 100).toFixed(1)}%)
+                            </div>
+                            <div class="bar-segment bar-denied" style="width: ${(1 - protRate) * 100}%">
+                                ${scenario.protectedData.denied}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="parity-metric">
+                        <div class="metric-value ${gap > 0.15 ? 'unfair' : gap > 0.10 ? 'concern' : 'fair'}">
+                            ${(protRate * 100).toFixed(1)}%
+                        </div>
+                        <div class="metric-label">Approval Rate (${gap > 0 ? '-' : '+'}${(gap * 100).toFixed(1)}% gap)</div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('cohortComparison').innerHTML = cohortHtml;
+            
+            // Display feature attribution
+            let attrHtml = '';
+            scenario.features.forEach((feature, index) => {
+                const impactClass = index < 2 ? 'high' : 'medium';
+                attrHtml += `
+                    <div class="attribution-item ${impactClass}">
+                        <div class="attribution-header">
+                            <div class="feature-name">${feature.name}</div>
+                            <div class="impact-score">Impact: ${(feature.impact * 100).toFixed(0)}%</div>
+                        </div>
+                        <div class="feature-details">${feature.details}</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('attributionList').innerHTML = attrHtml;
+        }
+
+        function updateMetrics(alertLevel) {
+            state.metrics.evaluations++;
+            if (alertLevel !== 'none') state.metrics.alerts++;
+            state.metrics.cohorts = 2;
+            state.metrics.features = 4;
+            
+            document.getElementById('metric-evaluations').textContent = state.metrics.evaluations;
+            document.getElementById('metric-alerts').textContent = state.metrics.alerts;
+            document.getElementById('metric-cohorts').textContent = state.metrics.cohorts;
+            document.getElementById('metric-features').textContent = state.metrics.features;
+        }
+
+        function logEvaluation(scenarioName, alertLevel, gap) {
+            const timestamp = new Date().toLocaleTimeString();
+            const status = alertLevel === 'critical' ? 'alert' : alertLevel === 'warning' ? 'concern' : 'fair';
+            const statusText = alertLevel === 'critical' ? 'ALERT' : alertLevel === 'warning' ? 'CONCERN' : 'FAIR';
+            
+            state.logs.unshift({
+                timestamp,
+                scenario: scenarioName,
+                status,
+                statusText,
+                gap: (gap * 100).toFixed(1)
+            });
+            
+            if (state.logs.length > 10) state.logs = state.logs.slice(0, 10);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+            if (state.logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No evaluations run yet</p>';
+                return;
+            }
+            
+            let html = '';
+            state.logs.forEach(log => {
+                html += `<div class="log-entry">
+                    <span class="log-time">${log.timestamp}</span>
+                    <span class="log-scenario">${log.scenario}</span>
+                    <span class="log-status ${log.status}">${log.statusText}</span>
+                    <span style="color: #718096;">Parity gap: ${log.gap}%</span>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // Initialize
+        updateLogDisplay();
+    </script>
+</body>
+</html>
