@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="SQL Query Validation">
+    <meta name="demo:description" content="Inspect and validate LLM-generated database queries for risky operations before execution">
+    <meta name="demo:category" content="security">
+    <meta name="demo:tags" content="Security,SQL,Database,Query Validation">
+    <title>SQL Query Validation - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .profile-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-card {
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .profile-card:hover {
+            border-color: #0052CC;
+            transform: translateY(-2px);
+        }
+
+        .profile-card.active {
+            border-color: #0052CC;
+            background: #e8f0fe;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .profile-icon {
+            font-size: 1.5rem;
+            margin-right: 0.75rem;
+        }
+
+        .profile-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1a1a1a;
+        }
+
+        .profile-desc {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+
+        .profile-rules {
+            font-size: 0.8rem;
+            color: #4a5568;
+        }
+
+        .profile-rule {
+            padding: 0.25rem 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .rule-icon {
+            margin-right: 0.5rem;
+        }
+
+        .query-editor {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            color: #d4d4d4;
+            border: 2px solid #e2e8f0;
+            min-height: 200px;
+            width: 100%;
+            resize: vertical;
+        }
+
+        .query-editor:focus {
+            outline: none;
+            border-color: #0052CC;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .validation-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-allowed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-blocked {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .query-analysis {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .analysis-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #e2e8f0;
+        }
+
+        .analysis-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .analysis-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .risk-indicators {
+            margin-top: 1rem;
+        }
+
+        .risk-item {
+            background: white;
+            border-left: 4px solid #e53e3e;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+
+        .risk-item.warning {
+            border-left-color: #f6ad55;
+        }
+
+        .risk-item.info {
+            border-left-color: #4299e1;
+        }
+
+        .risk-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+        }
+
+        .risk-desc {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #718096;
+            margin-right: 1rem;
+        }
+
+        .log-operation {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-verdict {
+            font-weight: 600;
+        }
+
+        .log-verdict.allowed {
+            color: #155724;
+        }
+
+        .log-verdict.blocked {
+            color: #721c24;
+        }
+
+        .log-verdict.review {
+            color: #856404;
+        }
+
+        .sample-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sample-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-card:hover {
+            border-color: #0052CC;
+            background: white;
+        }
+
+        .sample-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .sample-query {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            color: #718096;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🛡️ SQL Query Validation & Security</h1>
+            <p>Inspect and validate LLM-generated database queries for risky operations before execution</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Policy Profile Selection -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>Security Profiles</h2>
+            </div>
+
+            <div class="profile-selector">
+                <div class="profile-card" data-profile="readonly">
+                    <div class="profile-header">
+                        <div class="profile-icon">👁️</div>
+                        <div class="profile-name">Read-Only</div>
+                    </div>
+                    <div class="profile-desc">Minimal permissions for data analysis and reporting</div>
+                    <div class="profile-rules">
+                        <div class="profile-rule"><span class="rule-icon">✓</span> SELECT queries</div>
+                        <div class="profile-rule"><span class="rule-icon">✓</span> LIMIT required</div>
+                        <div class="profile-rule"><span class="rule-icon">✗</span> No INSERT/UPDATE/DELETE</div>
+                        <div class="profile-rule"><span class="rule-icon">✗</span> No schema modifications</div>
+                    </div>
+                </div>
+
+                <div class="profile-card active" data-profile="analyst">
+                    <div class="profile-header">
+                        <div class="profile-icon">📊</div>
+                        <div class="profile-name">Analyst</div>
+                    </div>
+                    <div class="profile-desc">Standard permissions for data manipulation with safeguards</div>
+                    <div class="profile-rules">
+                        <div class="profile-rule"><span class="rule-icon">✓</span> SELECT + INSERT</div>
+                        <div class="profile-rule"><span class="rule-icon">✓</span> UPDATE/DELETE with WHERE</div>
+                        <div class="profile-rule"><span class="rule-icon">✗</span> No DROP/TRUNCATE</div>
+                        <div class="profile-rule"><span class="rule-icon">✗</span> No ALTER TABLE</div>
+                    </div>
+                </div>
+
+                <div class="profile-card" data-profile="admin">
+                    <div class="profile-header">
+                        <div class="profile-icon">🔑</div>
+                        <div class="profile-name">Admin</div>
+                    </div>
+                    <div class="profile-desc">Full permissions for database administration</div>
+                    <div class="profile-rules">
+                        <div class="profile-rule"><span class="rule-icon">✓</span> All operations allowed</div>
+                        <div class="profile-rule"><span class="rule-icon">✓</span> Schema modifications</div>
+                        <div class="profile-rule"><span class="rule-icon">⚠</span> DROP/TRUNCATE logged</div>
+                        <div class="profile-rule"><span class="rule-icon">⚠</span> Bulk operations flagged</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Query Validator -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                    </svg>
+                </div>
+                <h2>Query Validator</h2>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">LLM-Generated Query</label>
+                <textarea id="queryInput" class="query-editor" placeholder="Enter or paste SQL query here...
+
+Example:
+SELECT * FROM customers WHERE created_at > '2024-01-01';"></textarea>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <button class="btn btn-primary" id="validateQuery">🔍 Validate Query</button>
+                <button class="btn btn-secondary" id="clearQuery">Clear</button>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: #4a5568;">Sample Queries</h3>
+            <div class="sample-queries">
+                <div class="sample-card" data-query="SELECT * FROM users WHERE status = 'active' LIMIT 100;">
+                    <div class="sample-title">✓ Safe SELECT</div>
+                    <div class="sample-query">SELECT * FROM users WHERE...</div>
+                </div>
+                <div class="sample-card" data-query="DELETE FROM customers WHERE 1=1;">
+                    <div class="sample-title">✗ Unconstrained DELETE</div>
+                    <div class="sample-query">DELETE FROM customers WHERE 1=1</div>
+                </div>
+                <div class="sample-card" data-query="UPDATE users SET role = 'admin';">
+                    <div class="sample-title">✗ UPDATE without WHERE</div>
+                    <div class="sample-query">UPDATE users SET role = 'admin'</div>
+                </div>
+                <div class="sample-card" data-query="DROP TABLE transactions;">
+                    <div class="sample-title">✗ Schema Modification</div>
+                    <div class="sample-query">DROP TABLE transactions</div>
+                </div>
+                <div class="sample-card" data-query="INSERT INTO logs (event, timestamp) VALUES ('user_login', NOW());">
+                    <div class="sample-title">✓ Safe INSERT</div>
+                    <div class="sample-query">INSERT INTO logs...</div>
+                </div>
+                <div class="sample-card" data-query="UPDATE orders SET status = 'shipped' WHERE order_id = 12345;">
+                    <div class="sample-title">✓ UPDATE with WHERE</div>
+                    <div class="sample-query">UPDATE orders SET status...</div>
+                </div>
+            </div>
+
+            <div id="validationResult" class="hidden"></div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Telemetry & Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Queries Validated</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-blocked">0</div>
+                    <div class="metric-label">Blocked</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-risky">0%</div>
+                    <div class="metric-label">Risky Operations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-latency">--</div>
+                    <div class="metric-label">Avg Latency</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Validation Log</h3>
+            <div id="logContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            activeProfile: 'analyst',
+            metrics: {
+                total: 0,
+                blocked: 0,
+                risky: 0,
+                totalLatency: 0
+            },
+            logs: []
+        };
+
+        // SECURITY PROFILES
+        const PROFILES = {
+            readonly: {
+                allowedOps: ['SELECT'],
+                requireWhere: [],
+                requireLimit: true,
+                blockOps: ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE']
+            },
+            analyst: {
+                allowedOps: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+                requireWhere: ['UPDATE', 'DELETE'],
+                requireLimit: false,
+                blockOps: ['DROP', 'TRUNCATE', 'ALTER', 'CREATE']
+            },
+            admin: {
+                allowedOps: ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE'],
+                requireWhere: [],
+                requireLimit: false,
+                blockOps: [],
+                logDestructive: true
+            }
+        };
+
+        // PROFILE SELECTION
+        document.querySelectorAll('.profile-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                state.activeProfile = card.dataset.profile;
+            });
+        });
+
+        // SAMPLE QUERY LOADING
+        document.querySelectorAll('.sample-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                document.getElementById('queryInput').value = card.dataset.query;
+            });
+        });
+
+        // VALIDATE QUERY
+        document.getElementById('validateQuery').addEventListener('click', () => {
+            const query = document.getElementById('queryInput').value.trim();
+            if (!query) {
+                alert('Please enter a SQL query to validate');
+                return;
+            }
+            validateQuery(query);
+        });
+
+        document.getElementById('clearQuery').addEventListener('click', () => {
+            document.getElementById('queryInput').value = '';
+            document.getElementById('validationResult').classList.add('hidden');
+        });
+
+        // QUERY VALIDATION LOGIC
+        function validateQuery(query) {
+            const startTime = Date.now();
+            const profile = PROFILES[state.activeProfile];
+            
+            // Parse query
+            const analysis = parseQuery(query);
+            const risks = identifyRisks(analysis, profile);
+            const verdict = determineVerdict(analysis, risks, profile);
+            
+            const latency = Date.now() - startTime;
+            
+            displayValidationResult(query, analysis, risks, verdict, latency);
+            updateMetrics(verdict, risks.length > 0, latency);
+            logValidation(analysis.operation, verdict);
+        }
+
+        function parseQuery(query) {
+            const normalized = query.trim().toUpperCase();
+            
+            // Extract operation type
+            let operation = 'UNKNOWN';
+            const ops = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE'];
+            for (const op of ops) {
+                if (normalized.startsWith(op)) {
+                    operation = op;
+                    break;
+                }
+            }
+            
+            // Check for WHERE clause
+            const hasWhere = /WHERE\s+/i.test(query);
+            
+            // Check for LIMIT clause
+            const hasLimit = /LIMIT\s+\d+/i.test(query);
+            
+            // Extract tables (simplified)
+            const tableMatch = query.match(/(?:FROM|INTO|UPDATE|TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/i);
+            const table = tableMatch ? tableMatch[1] : 'unknown';
+            
+            // Check for dangerous patterns
+            const hasWildcard = /WHERE\s+1\s*=\s*1|WHERE\s+true/i.test(query);
+            const affectsMultipleTables = (query.match(/,/g) || []).length > 2;
+            
+            return {
+                operation,
+                table,
+                hasWhere,
+                hasLimit,
+                hasWildcard,
+                affectsMultipleTables,
+                length: query.length
+            };
+        }
+
+        function identifyRisks(analysis, profile) {
+            const risks = [];
+            
+            // Check if operation is blocked
+            if (profile.blockOps.includes(analysis.operation)) {
+                risks.push({
+                    level: 'critical',
+                    title: 'Blocked Operation',
+                    description: `${analysis.operation} operations are not allowed in ${state.activeProfile} profile`
+                });
+            }
+            
+            // Check for missing WHERE clause
+            if (profile.requireWhere.includes(analysis.operation) && !analysis.hasWhere) {
+                risks.push({
+                    level: 'critical',
+                    title: 'Missing WHERE Clause',
+                    description: `${analysis.operation} requires a WHERE clause to prevent bulk operations`
+                });
+            }
+            
+            // Check for wildcard WHERE
+            if (analysis.hasWildcard) {
+                risks.push({
+                    level: 'critical',
+                    title: 'Wildcard Condition Detected',
+                    description: 'WHERE 1=1 or similar patterns affect all rows'
+                });
+            }
+            
+            // Check for missing LIMIT
+            if (profile.requireLimit && analysis.operation === 'SELECT' && !analysis.hasLimit) {
+                risks.push({
+                    level: 'warning',
+                    title: 'Missing LIMIT Clause',
+                    description: 'SELECT queries should include LIMIT to prevent resource exhaustion'
+                });
+            }
+            
+            // Check for destructive operations (admin profile)
+            if (profile.logDestructive && ['DROP', 'TRUNCATE'].includes(analysis.operation)) {
+                risks.push({
+                    level: 'warning',
+                    title: 'Destructive Operation',
+                    description: 'This operation will be logged for audit purposes'
+                });
+            }
+            
+            return risks;
+        }
+
+        function determineVerdict(analysis, risks, profile) {
+            const criticalRisks = risks.filter(r => r.level === 'critical');
+            
+            if (criticalRisks.length > 0) {
+                return 'blocked';
+            }
+            
+            if (!profile.allowedOps.includes(analysis.operation)) {
+                return 'blocked';
+            }
+            
+            if (risks.length > 0) {
+                return 'review';
+            }
+            
+            return 'allowed';
+        }
+
+        function displayValidationResult(query, analysis, risks, verdict, latency) {
+            const container = document.getElementById('validationResult');
+            
+            const verdictClass = 'result-' + verdict;
+            const verdictText = verdict === 'allowed' ? '✓ Query Allowed' :
+                              verdict === 'blocked' ? '✗ Query Blocked' :
+                              '⚠ Review Required';
+            
+            let html = '<div class="validation-result">';
+            html += '<div class="result-header">';
+            html += '<span class="result-badge ' + verdictClass + '">' + verdictText + '</span>';
+            html += '<span style="color: #718096; font-size: 0.9rem;">';
+            html += 'Profile: ' + state.activeProfile + ' | Latency: ' + latency + 'ms';
+            html += '</span></div>';
+            
+            // Query Analysis
+            html += '<div class="query-analysis">';
+            html += '<h3 style="margin-bottom: 1rem; color: #4a5568;">Query Analysis</h3>';
+            html += '<div class="analysis-grid">';
+            
+            html += '<div class="analysis-item">';
+            html += '<div class="analysis-label">Operation</div>';
+            html += '<div class="analysis-value">' + analysis.operation + '</div>';
+            html += '</div>';
+            
+            html += '<div class="analysis-item">';
+            html += '<div class="analysis-label">Target Table</div>';
+            html += '<div class="analysis-value">' + analysis.table + '</div>';
+            html += '</div>';
+            
+            html += '<div class="analysis-item">';
+            html += '<div class="analysis-label">WHERE Clause</div>';
+            html += '<div class="analysis-value">' + (analysis.hasWhere ? '✓ Present' : '✗ Missing') + '</div>';
+            html += '</div>';
+            
+            html += '<div class="analysis-item">';
+            html += '<div class="analysis-label">LIMIT Clause</div>';
+            html += '<div class="analysis-value">' + (analysis.hasLimit ? '✓ Present' : '✗ Missing') + '</div>';
+            html += '</div>';
+            
+            html += '</div></div>';
+            
+            // Risk Indicators
+            if (risks.length > 0) {
+                html += '<div class="risk-indicators">';
+                html += '<h3 style="margin-bottom: 1rem; color: #4a5568;">Risk Indicators</h3>';
+                risks.forEach(risk => {
+                    const riskClass = risk.level === 'critical' ? 'risk-item' : 'risk-item warning';
+                    html += '<div class="' + riskClass + '">';
+                    html += '<div class="risk-title">' + risk.title + '</div>';
+                    html += '<div class="risk-desc">' + risk.description + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            } else {
+                html += '<div style="margin-top: 1rem; padding: 1rem; background: #d4edda; border-radius: 6px; color: #155724;">';
+                html += '<strong>✓ No risks detected</strong> - Query follows security best practices';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        function updateMetrics(verdict, isRisky, latency) {
+            state.metrics.total++;
+            if (verdict === 'blocked') state.metrics.blocked++;
+            if (isRisky) state.metrics.risky++;
+            state.metrics.totalLatency += latency;
+            
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-blocked').textContent = state.metrics.blocked;
+            document.getElementById('metric-risky').textContent = 
+                ((state.metrics.risky / state.metrics.total) * 100).toFixed(0) + '%';
+            document.getElementById('metric-latency').textContent = 
+                Math.round(state.metrics.totalLatency / state.metrics.total) + 'ms';
+        }
+
+        function logValidation(operation, verdict) {
+            const timestamp = new Date().toLocaleTimeString();
+            
+            state.logs.unshift({
+                timestamp,
+                operation,
+                verdict,
+                profile: state.activeProfile
+            });
+            
+            if (state.logs.length > 10) state.logs = state.logs.slice(0, 10);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+            if (state.logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No queries validated yet</p>';
+                return;
+            }
+            
+            let html = '';
+            state.logs.forEach(log => {
+                const verdictClass = log.verdict === 'allowed' ? 'allowed' : 
+                                   log.verdict === 'blocked' ? 'blocked' : 'review';
+                
+                html += '<div class="log-entry">';
+                html += '<span class="log-time">' + log.timestamp + '</span>';
+                html += '<span class="log-operation">' + log.operation + '</span>';
+                html += '<span class="log-verdict ' + verdictClass + '">' + log.verdict.toUpperCase() + '</span>';
+                html += '<span style="color: #718096; margin-left: 1rem;">Profile: ' + log.profile + '</span>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        // Initialize
+        updateLogDisplay();
+    </script>
+</body>
+</html>
