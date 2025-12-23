@@ -910,16 +910,17 @@ const SAMPLE_CODE = {
                 'obfuscation': [/eval\s*\(/i, /exec\s*\(/i, /base64\.b64decode/i, /atob\(/i],
                 'priv-esc': [/sudo|su\s+-c/i, /chmod.*\+s/i, /RunAs/i]
             };
-
+        
             const patterns = evidencePatterns[threat] || [];
             for (const pattern of patterns) {
                 const match = code.match(pattern);
-                if (match) {
-                    return match.substring(0, 50);
+                if (match && match[0]) {
+                    return match[0].substring(0, 50);
                 }
             }
             return 'Pattern matched';
         }
+
 
         function displayScanResult(containerId, verdict, scores, language, triggered, source) {
             const container = document.getElementById(containerId);
