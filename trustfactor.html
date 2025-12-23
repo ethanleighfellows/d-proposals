@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trust Factor MVP (Dynamo-style)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Optional: modern webfont (fine for GitHub Pages/Notion embeds) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg0: #070A12;
+      --bg1: #0B1020;
+      --panel: rgba(255,255,255,0.03);
+      --panel2: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.65);
+
+      /* “Enterprise AI security” accent palette (approximate) */
+      --a0: #7C3AED; /* violet */
+      --a1: #22D3EE; /* cyan */
+      --a2: #34D399; /* green */
+      --warn: #FBBF24;
+      --bad: #FB7185;
+
+      --shadow: 0 18px 60px rgba(0,0,0,0.55);
+      --radius: 14px;
+    }
+
+    *{ box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(1200px 800px at 15% -10%, rgba(124,58,237,0.35), transparent 55%),
+        radial-gradient(900px 700px at 85% 0%, rgba(34,211,238,0.25), transparent 55%),
+        radial-gradient(900px 700px at 55% 110%, rgba(52,211,153,0.18), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      padding: 18px;
+    }
+
+    a{ color: rgba(34,211,238,0.95); text-decoration: none; }
+    a:hover{ text-decoration: underline; }
+
+    .shell{
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    /* Top nav */
+    .nav{
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 6px 18px;
+    }
+    .brand{
+      display:flex;
+      gap:10px;
+      align-items: center;
+    }
+    .brand-mark{
+      width: 12px; height: 12px; border-radius: 3px;
+      background: linear-gradient(135deg, var(--a0), var(--a1));
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
+    }
+    .brand-name{
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .nav-links{
+      display:flex; gap:10px; align-items:center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      color: rgba(255,255,255,0.78);
+    }
+
+    /* Hero */
+    .hero{
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: radial-gradient(700px 250px at 40% 0%, rgba(124,58,237,0.25), transparent 70%),
+                  radial-gradient(700px 250px at 90% 10%, rgba(34,211,238,0.20), transparent 70%);
+      pointer-events:none;
+    }
+    .hero > *{ position: relative; }
+    .hero h1{
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+    .hero p{
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 80ch;
+    }
+    .hero-row{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      align-items: center;
+    }
+    .cta{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(34,211,238,0.15));
+      color: rgba(255,255,255,0.92);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: default;
+    }
+    .subpill{
+      font-size: 12px;
+      color: rgba(255,255,255,0.72);
+      border-color: rgba(255,255,255,0.10);
+    }
+
+    /* Pillar cards */
+    .pillars{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .pillar{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 10px 10px 9px;
+      min-height: 74px;
+    }
+    .pillar h3{
+      margin: 0 0 4px;
+      font-size: 13px;
+      letter-spacing: -0.01em;
+    }
+    .pillar p{
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 900px){
+      .pillars{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px){
+      .pillars{ grid-template-columns: 1fr; }
+    }
+
+    /* App layout */
+    .grid{
+      display:grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.35);
+    }
+    .card h2{
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+      color: rgba(255,255,255,0.90);
+    }
+    label{
+      display:block;
+      font-size: 13px;
+      color: rgba(255,255,255,0.80);
+      margin-bottom: 10px;
+    }
+    select{
+      margin-left: 6px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.92);
+      outline: none;
+    }
+    .btn-row{
+      display:flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    button{
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.03);
+      color: rgba(255,255,255,0.92);
+      padding: 9px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.05s ease, background 0.15s ease;
+    }
+    button:hover{ background: rgba(255,255,255,0.06); }
+    button:active{ transform: translateY(1px); }
+
+    button[data-event="high"]{
+      border-color: rgba(251,113,133,0.55);
+      background: linear-gradient(135deg, rgba(251,113,133,0.15), rgba(255,255,255,0.02));
+    }
+    button[data-event="medium"]{
+      border-color: rgba(251,191,36,0.55);
+      background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(255,255,255,0.02));
+    }
+    button[data-event="clean"]{
+      border-color: rgba(52,211,153,0.55);
+      background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(255,255,255,0.02));
+    }
+
+    .hint{
+      margin: 10px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    th, td{
+      padding: 9px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      text-align: left;
+      vertical-align: top;
+    }
+    th{
+      color: rgba(255,255,255,0.82);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      background: rgba(10, 15, 30, 0.92);
+      backdrop-filter: blur(6px);
+      z-index: 1;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.03);
+    }
+    .tag-green{ border-color: rgba(52,211,153,0.55); color: rgba(167,243,208,0.95); }
+    .tag-yellow{ border-color: rgba(251,191,36,0.55); color: rgba(253,230,138,0.95); }
+    .tag-red{ border-color: rgba(251,113,133,0.55); color: rgba(254,202,202,0.95); }
+
+    .enforcement{
+      font-size: 11px;
+      color: rgba(255,255,255,0.62);
+      line-height: 1.35;
+    }
+
+    .stats-list{
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+      font-size: 13px;
+      color: rgba(255,255,255,0.78);
+    }
+    .stats-list li{ margin-bottom: 6px; }
+
+    .log{
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.20);
+      padding: 10px;
+    }
+    .log-entry{
+      margin-bottom: 6px;
+      color: rgba(255,255,255,0.76);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <div class="nav">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div class="brand-name">Trust Factor MVP</div>
+        <span class="pill subpill">Dynamo-style demo UI</span>
+      </div>
+      <div class="nav-links">
+        <span class="pill">Guardrails</span>
+        <span class="pill">Observability</span>
+        <span class="pill">Evaluations</span>
+      </div>
+    </div>
+
+    <section class="hero">
+      <h1>Guardrails with memory</h1>
+      <p>
+        Prototype: assign each actor a trust score, map them into Green/Yellow/Red bands, and automatically switch enforcement
+        (stricter checks, throttling, and logging) based on observed behavior.
+      </p>
+      <div class="hero-row">
+        <span class="cta">MVP: scoring → banding → enforcement</span>
+        <span class="pill subpill">Static client-side</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <!-- Controls + Stats -->
+      <div class="card">
+        <h2>Simulate actor behavior</h2>
+        <label>
+          Actor (stable ID):
+          <select id="userSelect"></select>
+        </label>
+
+        <label>
+          Violation type:
+          <select id="violationType">
+            <option value="prompt_injection">Prompt injection / guardrail</option>
+            <option value="policy_block">Policy violation</option>
+          </select>
+        </label>
+
+        <div class="btn-row">
+          <button data-event="medium">Medium violation (-10)</button>
+          <button data-event="high">High violation (-25)</button>
+          <button data-event="clean">Clean day (+1.5)</button>
+        </div>
+
+        <p class="hint">
+          Events update score immediately (no background recalculation).
+        </p>
+
+        <h2 style="margin-top:16px;">Trust band stats</h2>
+        <ul class="stats-list" id="bandStats"></ul>
+
+        <h2 style="margin-top:12px;">Top Red actors</h2>
+        <ul class="stats-list" id="topRed"></ul>
+
+        <h2 style="margin-top:12px;">Violation types</h2>
+        <ul class="stats-list" id="violationStats"></ul>
+      </div>
+
+      <!-- Users + Log -->
+      <div class="card">
+        <h2>Actors & enforcement</h2>
+        <div style="max-height:280px; overflow:auto; border:1px solid rgba(255,255,255,0.10); border-radius:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Score</th>
+                <th>Band</th>
+                <th>Violations</th>
+                <th>Enforcement</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+
+        <h2 style="margin-top:16px;">Event log</h2>
+        <div class="log" id="eventLog"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------
+    // CONFIG: scoring & thresholds
+    // ----------------------------
+    const SCORE_MAX = 100;
+    const SCORE_MIN = 0;
+
+    const BAND_THRESHOLDS = {
+      GREEN_MIN: 85,  // 85–100
+      YELLOW_MIN: 50  // 50–84
+      // else Red: 0–49
+    };
+
+    const SCORE_DELTAS = {
+      mediumViolation: -10,
+      highViolation: -25,
+      cleanDay: +1.5
+    };
+
+    // Example starting population
+    const users = [
+      { id: "user-001", label: "user-001", score: 80, violations: 0, band: "Yellow", history: [] },
+      { id: "user-002", label: "user-002", score: 92, violations: 0, band: "Green", history: [] },
+      { id: "user-003", label: "user-003", score: 45, violations: 2, band: "Red", history: [] },
+      { id: "user-004", label: "user-004 (new)", score: 60, violations: 0, band: "Yellow", history: [] }
+    ];
+
+    const violationCounters = {
+      prompt_injection: 0,
+      policy_block: 0,
+      medium: 0,
+      high: 0
+    };
+
+    // ----------------------------
+    // Helpers
+    // ----------------------------
+    function clampScore(score) {
+      return Math.max(SCORE_MIN, Math.min(SCORE_MAX, score));
+    }
+
+    function bandForScore(score) {
+      if (score >= BAND_THRESHOLDS.GREEN_MIN) return "Green";
+      if (score >= BAND_THRESHOLDS.YELLOW_MIN) return "Yellow";
+      return "Red";
+    }
+
+    function enforcementForBand(band) {
+      switch (band) {
+        case "Green":
+          return "Higher RPM & priority; lighter checks; standard logging.";
+        case "Yellow":
+          return "Default checks & thresholds; normal latency; standard logging.";
+        case "Red":
+          return "Max checks; stricter thresholds; throttled RPM; heavy logging.";
+        default:
+          return "Unknown.";
+      }
+    }
+
+    function bandClass(band) {
+      if (band === "Green") return "tag tag-green";
+      if (band === "Yellow") return "tag tag-yellow";
+      return "tag tag-red";
+    }
+
+    function formatScore(score) {
+      return score.toFixed(1);
+    }
+
+    // ----------------------------
+    // DOM refs
+    // ----------------------------
+    const userSelectEl = document.getElementById("userSelect");
+    const violationTypeEl = document.getElementById("violationType");
+    const userTableBodyEl = document.getElementById("userTableBody");
+    const bandStatsEl = document.getElementById("bandStats");
+    const topRedEl = document.getElementById("topRed");
+    const violationStatsEl = document.getElementById("violationStats");
+    const eventLogEl = document.getElementById("eventLog");
+    const buttons = document.querySelectorAll("button[data-event]");
+
+    // ----------------------------
+    // Rendering
+    // ----------------------------
+    function renderUserSelect() {
+      userSelectEl.innerHTML = "";
+      users.forEach((u, idx) => {
+        const opt = document.createElement("option");
+        opt.value = u.id;
+        opt.textContent = `${u.label}`;
+        if (idx === 0) opt.selected = true;
+        userSelectEl.appendChild(opt);
+      });
+    }
+
+    function renderUsersTable() {
+      userTableBodyEl.innerHTML = "";
+      users.forEach(u => {
+        const tr = document.createElement("tr");
+
+        const tdId = document.createElement("td");
+        tdId.textContent = u.label;
+
+        const tdScore = document.createElement("td");
+        tdScore.textContent = formatScore(u.score);
+
+        const tdBand = document.createElement("td");
+        const span = document.createElement("span");
+        span.className = bandClass(u.band);
+        span.textContent = u.band;
+        tdBand.appendChild(span);
+
+        const tdViolations = document.createElement("td");
+        tdViolations.textContent = u.violations;
+
+        const tdEnforcement = document.createElement("td");
+        const enf = document.createElement("div");
+        enf.className = "enforcement";
+        enf.textContent = enforcementForBand(u.band);
+        tdEnforcement.appendChild(enf);
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdScore);
+        tr.appendChild(tdBand);
+        tr.appendChild(tdViolations);
+        tr.appendChild(tdEnforcement);
+        userTableBodyEl.appendChild(tr);
+      });
+    }
+
+    function renderStats() {
+      const counts = { Green: 0, Yellow: 0, Red: 0 };
+      users.forEach(u => { counts[u.band] = (counts[u.band] || 0) + 1; });
+
+      bandStatsEl.innerHTML = "";
+      ["Green","Yellow","Red"].forEach(b => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="pill">${b}</span> ${counts[b]} users`;
+        bandStatsEl.appendChild(li);
+      });
+
+      topRedEl.innerHTML = "";
+      const redUsers = users
+        .filter(u => u.band === "Red")
+        .sort((a, b) => b.violations - a.violations)
+        .slice(0, 5);
+
+      if (redUsers.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No Red users yet.";
+        topRedEl.appendChild(li);
+      } else {
+        redUsers.forEach(u => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span class="pill">${u.label}</span> ${u.violations} violations`;
+          topRedEl.appendChild(li);
+        });
+      }
+
+      violationStatsEl.innerHTML = "";
+      const rows = [
+        ["Prompt injection / guardrail", violationCounters.prompt_injection],
+        ["Policy violations", violationCounters.policy_block],
+        ["Medium severity events", violationCounters.medium],
+        ["High severity events", violationCounters.high],
+      ];
+      rows.forEach(([k,v]) => {
+        const li = document.createElement("li");
+        li.textContent = `${k}: ${v}`;
+        violationStatsEl.appendChild(li);
+      });
+    }
+
+    function logEvent(message) {
+      const div = document.createElement("div");
+      div.className = "log-entry";
+      const ts = new Date().toLocaleTimeString();
+      div.textContent = `[${ts}] ${message}`;
+      eventLogEl.prepend(div);
+    }
+
+    function reRenderAll() {
+      renderUsersTable();
+      renderStats();
+    }
+
+    // ----------------------------
+    // Update logic
+    // ----------------------------
+    function findUserById(id) {
+      return users.find(u => u.id === id);
+    }
+
+    function applyEvent(userId, eventType, violationType) {
+      const user = findUserById(userId);
+      if (!user) return;
+
+      let delta = 0;
+      let description = "";
+
+      if (eventType === "medium") {
+        delta = SCORE_DELTAS.mediumViolation;
+        description = "Medium violation";
+        violationCounters.medium += 1;
+      } else if (eventType === "high") {
+        delta = SCORE_DELTAS.highViolation;
+        description = "High-severity violation";
+        violationCounters.high += 1;
+      } else if (eventType === "clean") {
+        delta = SCORE_DELTAS.cleanDay;
+        description = "Clean usage day";
+      }
+
+      const oldScore = user.score;
+      const newScore = clampScore(oldScore + delta);
+      user.score = newScore;
+
+      const oldBand = user.band;
+      user.band = bandForScore(newScore);
+
+      if (eventType === "medium" || eventType === "high") {
+        user.violations += 1;
+        if (violationType === "prompt_injection") violationCounters.prompt_injection += 1;
+        if (violationType === "policy_block") violationCounters.policy_block += 1;
+      }
+
+      user.history.push({
+        ts: Date.now(),
+        type: eventType,
+        violationType,
+        delta,
+        oldScore,
+        newScore,
+        oldBand,
+        newBand: user.band
+      });
+
+      const bandChange = (oldBand !== user.band) ? ` (band ${oldBand} → ${user.band})` : "";
+      logEvent(`${user.label}: ${description} (${violationType}) ${delta>0?"+":""}${delta.toFixed(1)} → ${newScore.toFixed(1)}${bandChange}`);
+
+      reRenderAll();
+    }
+
+    // ----------------------------
+    // Events
+    // ----------------------------
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const eventType = btn.getAttribute("data-event");
+        const userId = userSelectEl.value;
+        const violationType = violationTypeEl.value;
+        applyEvent(userId, eventType, violationType);
+      });
+    });
+
+    // ----------------------------
+    // Init
+    // ----------------------------
+    users.forEach(u => { u.band = bandForScore(u.score); });
+    renderUserSelect();
+    reRenderAll();
+  </script>
+</body>
+</html>
