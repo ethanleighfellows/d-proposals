@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Multi-Modal Content Filters">
+    <meta name="demo:description" content="Extend moderation from text-only to text + images with configurable policy thresholds">
+    <meta name="demo:category" content="security">
+    <meta name="demo:tags" content="Security,Moderation,Multi-Modal,Image Safety">
+    <title>Multi-Modal Content Filters - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .policy-category {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .policy-category:hover {
+            border-color: #0052CC;
+        }
+
+        .policy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .policy-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1.1rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            transition: 0.4s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #0052CC;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .threshold-control {
+            margin-bottom: 1rem;
+        }
+
+        .threshold-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .threshold-value {
+            font-weight: 600;
+            color: #0052CC;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0052CC;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0052CC;
+            cursor: pointer;
+            border: none;
+        }
+
+        .enforcement-action {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            padding: 0.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            border-color: #0052CC;
+        }
+
+        .action-btn.active {
+            background: #0052CC;
+            color: white;
+            border-color: #0052CC;
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 3rem 2rem;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area:hover {
+            border-color: #0052CC;
+            background: #e8f0fe;
+        }
+
+        .upload-area.active {
+            border-color: #0052CC;
+            background: #e8f0fe;
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            opacity: 0.5;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 1rem 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .moderation-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-allowed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-blocked {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .score-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #e2e8f0;
+        }
+
+        .score-item.high {
+            border-left-color: #e53e3e;
+        }
+
+        .score-item.medium {
+            border-left-color: #f6ad55;
+        }
+
+        .score-item.low {
+            border-left-color: #48bb78;
+        }
+
+        .score-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .score-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #718096;
+            margin-right: 1rem;
+        }
+
+        .log-modality {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-action {
+            font-weight: 600;
+        }
+
+        .log-action.allowed {
+            color: #155724;
+        }
+
+        .log-action.blocked {
+            color: #721c24;
+        }
+
+        .log-action.review {
+            color: #856404;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #718096;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: #0052CC;
+        }
+
+        .tab.active {
+            color: #0052CC;
+            border-bottom-color: #0052CC;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🎨 Multi-Modal Content Filters</h1>
+            <p>Extend moderation from text-only to text + images with configurable policy thresholds and enforcement actions</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Policy Configuration Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>Policy Configuration</h2>
+            </div>
+
+            <div class="grid-2">
+                <!-- Text Moderation Policies -->
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Text Content Policies</h3>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Hate Speech</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="text-hate">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Threshold</span>
+                                <span class="threshold-value" id="text-hate-threshold">0.7</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.7" data-threshold="text-hate">
+                        </div>
+                        <div class="enforcement-action">
+                            <button class="action-btn active" data-action="text-hate" data-value="block">Block</button>
+                            <button class="action-btn" data-action="text-hate" data-value="review">Review</button>
+                            <button class="action-btn" data-action="text-hate" data-value="allow">Allow</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Violence</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="text-violence">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Threshold</span>
+                                <span class="threshold-value" id="text-violence-threshold">0.6</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.6" data-threshold="text-violence">
+                        </div>
+                        <div class="enforcement-action">
+                            <button class="action-btn active" data-action="text-violence" data-value="block">Block</button>
+                            <button class="action-btn" data-action="text-violence" data-value="review">Review</button>
+                            <button class="action-btn" data-action="text-violence" data-value="allow">Allow</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Sexual Content</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="text-sexual">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Threshold</span>
+                                <span class="threshold-value" id="text-sexual-threshold">0.5</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.5" data-threshold="text-sexual">
+                        </div>
+                        <div class="enforcement-action">
+                            <button class="action-btn active" data-action="text-sexual" data-value="block">Block</button>
+                            <button class="action-btn" data-action="text-sexual" data-value="review">Review</button>
+                            <button class="action-btn" data-action="text-sexual" data-value="allow">Allow</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Moderation Policies -->
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Image Content Policies</h3>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Hate Symbols</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="image-hate">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Threshold</span>
+                                <span class="threshold-value" id="image-hate-threshold">0.8</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.8" data-threshold="image-hate">
+                        </div>
+                        <div class="enforcement-action">
+                            <button class="action-btn active" data-action="image-hate" data-value="block">Block</button>
+                            <button class="action-btn" data-action="image-hate" data-value="review">Review</button>
+                            <button class="action-btn" data-action="image-hate" data-value="allow">Allow</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Graphic Violence</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="image-violence">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Threshold</span>
+                                <span class="threshold-value" id="image-violence-threshold">0.7</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.7" data-threshold="image-violence">
+                        </div>
+                        <div class="enforcement-action">
+                            <button class="action-btn active" data-action="image-violence" data-value="block">Block</button>
+                            <button class="action-btn" data-action="image-violence" data-value="review">Review</button>
+                            <button class="action-btn" data-action="image-violence" data-value="allow">Allow</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Adult Content</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="image-sexual">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Threshold</span>
+                                <span class="threshold-value" id="image-sexual-threshold">0.6</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.6" data-threshold="image-sexual">
+                        </div>
+                        <div class="enforcement-action">
+                            <button class="action-btn active" data-action="image-sexual" data-value="block">Block</button>
+                            <button class="action-btn" data-action="image-sexual" data-value="review">Review</button>
+                            <button class="action-btn" data-action="image-sexual" data-value="allow">Allow</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Test Interface Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    </svg>
+                </div>
+                <h2>Test Multi-Modal Moderation</h2>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="upload">Image Upload</button>
+                <button class="tab" data-tab="generate">Image Generation</button>
+            </div>
+
+            <!-- Upload Tab -->
+            <div class="tab-content active" id="upload-tab">
+                <div class="upload-area" id="uploadArea">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+                    </svg>
+                    <h3>Drop an image here or click to upload</h3>
+                    <p style="color: #718096; margin-top: 0.5rem;">Supports JPG, PNG, GIF up to 10MB</p>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+
+                <div id="uploadPreview" class="hidden">
+                    <img id="previewImage" class="preview-image" alt="Preview">
+                    <button class="btn btn-primary" id="analyzeUpload">Analyze Image</button>
+                    <button class="btn btn-secondary" id="clearUpload" style="margin-left: 1rem;">Clear</button>
+                </div>
+
+                <div id="uploadResult" class="hidden"></div>
+            </div>
+
+            <!-- Generate Tab -->
+            <div class="tab-content" id="generate-tab">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Image Generation Prompt</label>
+                    <textarea id="generatePrompt" rows="3" style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 6px; font-family: inherit; resize: vertical;" placeholder="Enter a prompt to generate an image..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" id="generateImage">Generate & Analyze Image</button>
+
+                <div id="generatePreview" class="hidden">
+                    <img id="generatedImage" class="preview-image" alt="Generated">
+                </div>
+
+                <div id="generateResult" class="hidden"></div>
+            </div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Telemetry & Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Total Requests</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-allowed">0</div>
+                    <div class="metric-label">Allowed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-blocked">0</div>
+                    <div class="metric-label">Blocked</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-review">0</div>
+                    <div class="metric-label">Human Review</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Request Log</h3>
+            <div id="logContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // ========================================
+        // STATE MANAGEMENT
+        // ========================================
+        const state = {
+            policies: {
+                'text-hate': { enabled: true, threshold: 0.7, action: 'block' },
+                'text-violence': { enabled: true, threshold: 0.6, action: 'block' },
+                'text-sexual': { enabled: true, threshold: 0.5, action: 'block' },
+                'image-hate': { enabled: true, threshold: 0.8, action: 'block' },
+                'image-violence': { enabled: true, threshold: 0.7, action: 'block' },
+                'image-sexual': { enabled: true, threshold: 0.6, action: 'block' }
+            },
+            metrics: {
+                total: 0,
+                allowed: 0,
+                blocked: 0,
+                review: 0
+            },
+            logs: []
+        };
+
+        // Sample images for simulation
+        const SAMPLE_IMAGES = [
+            'https://via.placeholder.com/400x300/48bb78/ffffff?text=Safe+Content',
+            'https://via.placeholder.com/400x300/f6ad55/ffffff?text=Moderate+Risk',
+            'https://via.placeholder.com/400x300/e53e3e/ffffff?text=High+Risk'
+        ];
+
+        // ========================================
+        // POLICY CONFIGURATION HANDLERS
+        // ========================================
+
+        // Toggle switches
+        document.querySelectorAll('[data-policy]').forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const policy = e.target.dataset.policy;
+                state.policies[policy].enabled = e.target.checked;
+            });
+        });
+
+        // Threshold sliders
+        document.querySelectorAll('[data-threshold]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const policy = e.target.dataset.threshold;
+                const value = parseFloat(e.target.value);
+                state.policies[policy].threshold = value;
+                document.getElementById(`${policy}-threshold`).textContent = value.toFixed(1);
+            });
+        });
+
+        // Enforcement action buttons
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const policy = e.target.dataset.action;
+                const value = e.target.dataset.value;
+
+                // Update UI
+                document.querySelectorAll(`[data-action="${policy}"]`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                e.target.classList.add('active');
+
+                // Update state
+                state.policies[policy].action = value;
+            });
+        });
+
+        // ========================================
+        // TAB NAVIGATION
+        // ========================================
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+
+                // Update tab buttons
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        // ========================================
+        // IMAGE UPLOAD HANDLERS
+        // ========================================
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const previewImage = document.getElementById('previewImage');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('active');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('active');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('active');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                displayUploadedImage(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                displayUploadedImage(file);
+            }
+        });
+
+        function displayUploadedImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                uploadArea.style.display = 'none';
+                uploadPreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('clearUpload').addEventListener('click', () => {
+            uploadArea.style.display = 'block';
+            uploadPreview.classList.add('hidden');
+            document.getElementById('uploadResult').classList.add('hidden');
+            fileInput.value = '';
+        });
+
+        document.getElementById('analyzeUpload').addEventListener('click', () => {
+            analyzeImage('upload', previewImage.src);
+        });
+
+        // ========================================
+        // IMAGE GENERATION HANDLERS
+        // ========================================
+
+        document.getElementById('generateImage').addEventListener('click', () => {
+            const prompt = document.getElementById('generatePrompt').value.trim();
+
+            if (!prompt) {
+                alert('Please enter a prompt to generate an image');
+                return;
+            }
+
+            // Simulate image generation
+            const randomImage = SAMPLE_IMAGES[Math.floor(Math.random() * SAMPLE_IMAGES.length)];
+            const generatedImage = document.getElementById('generatedImage');
+            generatedImage.src = randomImage;
+
+            document.getElementById('generatePreview').classList.remove('hidden');
+
+            // Analyze after a short delay to simulate generation
+            setTimeout(() => {
+                analyzeImage('generate', randomImage);
+            }, 500);
+        });
+
+        // ========================================
+        // MODERATION ANALYSIS
+        // ========================================
+
+        function analyzeImage(type, imageSrc) {
+            // Simulate moderation analysis
+            const scores = {
+                hate: Math.random(),
+                violence: Math.random(),
+                sexual: Math.random()
+            };
+
+            const modality = type === 'upload' ? 'Upload' : 'Generated';
+            const prefix = 'image';
+
+            // Determine overall verdict based on policies
+            let verdict = 'allowed';
+            let triggeredCategories = [];
+
+            for (const [category, score] of Object.entries(scores)) {
+                const policyKey = `${prefix}-${category}`;
+                const policy = state.policies[policyKey];
+
+                if (policy.enabled && score >= policy.threshold) {
+                    triggeredCategories.push({ category, score, action: policy.action });
+
+                    // Most restrictive action wins
+                    if (policy.action === 'block') {
+                        verdict = 'blocked';
+                    } else if (policy.action === 'review' && verdict !== 'blocked') {
+                        verdict = 'review';
+                    }
+                }
+            }
+
+            // Display results
+            const resultId = type === 'upload' ? 'uploadResult' : 'generateResult';
+            displayModerationResult(resultId, verdict, scores, modality);
+
+            // Log the event
+            logEvent(modality, verdict, scores, triggeredCategories);
+
+            // Update metrics
+            updateMetrics(verdict);
+        }
+
+        function displayModerationResult(elementId, verdict, scores, modality) {
+            const container = document.getElementById(elementId);
+
+            const verdictClass = verdict === 'allowed' ? 'result-allowed' : 
+                                verdict === 'blocked' ? 'result-blocked' : 'result-review';
+
+            const verdictText = verdict === 'allowed' ? '✓ Allowed' : 
+                              verdict === 'blocked' ? '✗ Blocked' : '⚠ Human Review Required';
+
+            const latency = Math.floor(Math.random() * 200) + 100;
+
+            container.innerHTML = `
+                <div class="moderation-result">
+                    <div class="result-header">
+                        <span class="result-badge ${verdictClass}">${verdictText}</span>
+                        <span style="margin-left: auto; color: #718096; font-size: 0.9rem;">
+                            Latency: ${latency}ms | Modality: ${modality}
+                        </span>
+                    </div>
+
+                    <h4 style="margin-bottom: 1rem; color: #4a5568;">Category Scores</h4>
+                    <div class="score-grid">
+                        ${Object.entries(scores).map(([category, score]) => {
+                            const severity = score >= 0.7 ? 'high' : score >= 0.4 ? 'medium' : 'low';
+                            return `
+                                <div class="score-item ${severity}">
+                                    <div class="score-label">${category.charAt(0).toUpperCase() + category.slice(1)}</div>
+                                    <div class="score-value">${(score * 100).toFixed(1)}%</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+
+            container.classList.remove('hidden');
+        }
+
+        // ========================================
+        // TELEMETRY & LOGGING
+        // ========================================
+
+        function logEvent(modality, verdict, scores, triggeredCategories) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                timestamp,
+                modality,
+                verdict,
+                scores,
+                triggeredCategories
+            };
+
+            state.logs.unshift(logEntry);
+
+            // Keep only last 10 logs
+            if (state.logs.length > 10) {
+                state.logs = state.logs.slice(0, 10);
+            }
+
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+
+            if (state.logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No events logged yet</p>';
+                return;
+            }
+
+            container.innerHTML = state.logs.map(log => {
+                const actionClass = log.verdict === 'allowed' ? 'allowed' : 
+                                   log.verdict === 'blocked' ? 'blocked' : 'review';
+
+                const categories = log.triggeredCategories.length > 0 
+                    ? log.triggeredCategories.map(c => `${c.category} (${(c.score * 100).toFixed(1)}%)`).join(', ')
+                    : 'No violations';
+
+                return `
+                    <div class="log-entry">
+                        <span class="log-time">${log.timestamp}</span>
+                        <span class="log-modality">${log.modality}</span>
+                        <span class="log-action ${actionClass}">${log.verdict.toUpperCase()}</span>
+                        <span style="color: #718096; margin-left: 1rem;">${categories}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateMetrics(verdict) {
+            state.metrics.total++;
+            state.metrics[verdict]++;
+
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-allowed').textContent = state.metrics.allowed;
+            document.getElementById('metric-blocked').textContent = state.metrics.blocked;
+            document.getElementById('metric-review').textContent = state.metrics.review;
+        }
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+
+        // Initialize log display
+        updateLogDisplay();
+    </script>
+</body>
+</html>
