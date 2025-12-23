@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Brand Safety Controls">
+    <meta name="demo:description" content="Filter competitor mentions and off-topic responses to maintain brand-safe LLM outputs">
+    <meta name="demo:category" content="policy">
+    <meta name="demo:tags" content="Brand Safety,Competitor Filtering,Relevance,Output Quality">
+    <title>Brand Safety & Output Controls - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .info-banner {
+            background: #e8f0fe;
+            border-left: 4px solid #0052CC;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            border-radius: 4px;
+        }
+
+        .info-banner strong {
+            color: #0052CC;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .control-group {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e2e8f0;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .control-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            transition: 0.4s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #0052CC;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #0052CC;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .tag {
+            background: #e8f0fe;
+            color: #0052CC;
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .response-editor {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .response-editor:focus {
+            outline: none;
+            border-color: #0052CC;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .filter-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-passed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-filtered {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .result-blocked {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .detection-grid {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .detection-item {
+            background: white;
+            border-left: 4px solid #f6ad55;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .detection-item.blocked {
+            border-left-color: #e53e3e;
+        }
+
+        .detection-type {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .detection-details {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        .highlighted-text {
+            background: #fff3cd;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .relevance-score {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .score-bar {
+            flex: 1;
+            height: 24px;
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+            transition: width 0.3s ease;
+        }
+
+        .score-fill.high {
+            background: #48bb78;
+        }
+
+        .score-fill.medium {
+            background: #f6ad55;
+        }
+
+        .score-fill.low {
+            background: #e53e3e;
+        }
+
+        .sample-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sample-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-card:hover {
+            border-color: #0052CC;
+            background: white;
+        }
+
+        .sample-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .sample-desc {
+            font-size: 0.8rem;
+            color: #718096;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🛡️ Brand Safety & Output Controls</h1>
+            <p>Filter competitor mentions and off-topic responses to maintain brand-safe LLM outputs</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="info-banner">
+            <strong>Note:</strong> This functionality can be implemented using existing custom content policy templates with keyword blocklists and semantic relevance scoring. A dedicated feature may not be necessary for most use cases.
+        </div>
+
+        <!-- Configuration Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>Output Filtering Configuration</h2>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <div class="control-group">
+                        <div class="control-header">
+                            <span class="control-title">🚫 Competitor Mention Blocking</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked id="competitorToggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #718096; margin-bottom: 1rem;">
+                            Detect and filter competitor brand/product references in LLM outputs
+                        </p>
+                        <label class="form-label">Add Competitor (press Enter)</label>
+                        <input type="text" id="competitorInput" class="form-input" placeholder="e.g., Salesforce, HubSpot">
+                        <div class="tag-list" id="competitorList"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="control-group">
+                        <div class="control-header">
+                            <span class="control-title">🎯 Relevance Filtering</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked id="relevanceToggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #718096; margin-bottom: 1rem;">
+                            Block responses that drift off-topic from the user query
+                        </p>
+                        <label class="form-label">Relevance Threshold: <span id="thresholdValue">0.70</span></label>
+                        <input type="range" min="0.5" max="1.0" step="0.05" value="0.70" id="thresholdSlider" style="width: 100%;">
+                        <p style="font-size: 0.8rem; color: #718096; margin-top: 0.5rem;">
+                            Higher values = stricter relevance requirement
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testing Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                </div>
+                <h2>Test Output Filtering</h2>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">User Query</label>
+                <input type="text" id="userQuery" class="form-input" placeholder="Enter the original user question...">
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">LLM Response</label>
+                <textarea id="responseInput" class="response-editor" placeholder="Enter or paste an LLM response to test filtering..."></textarea>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <button class="btn btn-primary" id="filterResponse">🔍 Apply Filters</button>
+                <button class="btn btn-secondary" id="loadSample">Load Sample</button>
+            </div>
+
+            <h3 style="margin-bottom: 1rem; color: #4a5568;">Test Samples</h3>
+            <div class="sample-grid">
+                <div class="sample-card" data-sample="competitor">
+                    <div class="sample-title">Competitor Mention</div>
+                    <div class="sample-desc">Response references rival products</div>
+                </div>
+                <div class="sample-card" data-sample="offtopic">
+                    <div class="sample-title">Off-Topic Response</div>
+                    <div class="sample-desc">Answer unrelated to query</div>
+                </div>
+                <div class="sample-card" data-sample="both">
+                    <div class="sample-title">Both Violations</div>
+                    <div class="sample-desc">Competitor + irrelevant content</div>
+                </div>
+                <div class="sample-card" data-sample="clean">
+                    <div class="sample-title">Clean Response</div>
+                    <div class="sample-desc">Passes all filters</div>
+                </div>
+            </div>
+
+            <div id="filterResult" class="hidden"></div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Filtering Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Responses Filtered</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-competitor">0</div>
+                    <div class="metric-label">Competitor Blocks</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-relevance">0</div>
+                    <div class="metric-label">Relevance Blocks</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-clean">0</div>
+                    <div class="metric-label">Passed</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            competitors: ['Salesforce', 'HubSpot', 'Microsoft Dynamics', 'Oracle CRM'],
+            competitorEnabled: true,
+            relevanceEnabled: true,
+            relevanceThreshold: 0.70,
+            metrics: {
+                total: 0,
+                competitor: 0,
+                relevance: 0,
+                clean: 0
+            }
+        };
+
+        // SAMPLE DATA
+        const SAMPLES = {
+            competitor: {
+                query: "What CRM features does your product offer?",
+                response: "Our CRM includes contact management, pipeline tracking, and email integration. For comparison, Salesforce and HubSpot offer similar features but at higher price points. We also integrate with Microsoft Dynamics for data migration."
+            },
+            offtopic: {
+                query: "How do I reset my password?",
+                response: "The weather today is quite nice! Speaking of which, did you know that our company was founded in 2010? We have offices in 15 countries and our CEO loves hiking on weekends."
+            },
+            both: {
+                query: "What pricing plans do you offer?",
+                response: "Let me tell you about the history of databases. In the 1970s, Edgar Codd invented the relational model. Many companies like Oracle and Salesforce have built upon this. By the way, have you tried our competitor's product? It's actually quite good."
+            },
+            clean: {
+                query: "What are your customer support hours?",
+                response: "Our customer support team is available 24/7 via live chat, email, and phone. We offer priority support for enterprise customers with guaranteed response times under 1 hour for critical issues."
+            }
+        };
+
+        // INITIALIZE
+        renderCompetitorList();
+
+        // EVENT LISTENERS
+        document.getElementById('competitorToggle').addEventListener('change', (e) => {
+            state.competitorEnabled = e.target.checked;
+        });
+
+        document.getElementById('relevanceToggle').addEventListener('change', (e) => {
+            state.relevanceEnabled = e.target.checked;
+        });
+
+        document.getElementById('thresholdSlider').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            state.relevanceThreshold = value;
+            document.getElementById('thresholdValue').textContent = value.toFixed(2);
+        });
+
+        document.getElementById('competitorInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const value = e.target.value.trim();
+                if (value && !state.competitors.includes(value)) {
+                    state.competitors.push(value);
+                    renderCompetitorList();
+                    e.target.value = '';
+                }
+            }
+        });
+
+        document.querySelectorAll('.sample-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const sample = SAMPLES[card.dataset.sample];
+                document.getElementById('userQuery').value = sample.query;
+                document.getElementById('responseInput').value = sample.response;
+            });
+        });
+
+        document.getElementById('filterResponse').addEventListener('click', () => {
+            const query = document.getElementById('userQuery').value.trim();
+            const response = document.getElementById('responseInput').value.trim();
+            
+            if (!query || !response) {
+                alert('Please enter both a query and response');
+                return;
+            }
+            
+            filterResponse(query, response);
+        });
+
+        document.getElementById('loadSample').addEventListener('click', () => {
+            const samples = Object.keys(SAMPLES);
+            const random = samples[Math.floor(Math.random() * samples.length)];
+            const sample = SAMPLES[random];
+            document.getElementById('userQuery').value = sample.query;
+            document.getElementById('responseInput').value = sample.response;
+        });
+
+        // COMPETITOR LIST RENDERING
+        function renderCompetitorList() {
+            const container = document.getElementById('competitorList');
+            let html = '';
+            state.competitors.forEach((comp, index) => {
+                html += `<div class="tag">
+                    ${comp}
+                    <span class="tag-remove" onclick="removeCompetitor(${index})">×</span>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function removeCompetitor(index) {
+            state.competitors.splice(index, 1);
+            renderCompetitorList();
+        }
+
+        window.removeCompetitor = removeCompetitor;
+
+        // FILTERING LOGIC
+        function filterResponse(query, response) {
+            const detections = [];
+            let verdict = 'passed';
+            let filteredResponse = response;
+
+            // Competitor detection
+            if (state.competitorEnabled) {
+                const mentions = detectCompetitorMentions(response);
+                if (mentions.length > 0) {
+                    detections.push({
+                        type: 'Competitor Mentions Detected',
+                        details: `Found ${mentions.length} competitor reference(s): ${mentions.join(', ')}`,
+                        blocked: true,
+                        mentions: mentions
+                    });
+                    verdict = 'filtered';
+                    filteredResponse = removeCompetitorMentions(response, mentions);
+                }
+            }
+
+            // Relevance scoring
+            if (state.relevanceEnabled) {
+                const relevanceScore = calculateRelevance(query, response);
+                const isRelevant = relevanceScore >= state.relevanceThreshold;
+                
+                detections.push({
+                    type: 'Relevance Score',
+                    details: `Similarity: ${(relevanceScore * 100).toFixed(1)}% (threshold: ${(state.relevanceThreshold * 100).toFixed(0)}%)`,
+                    blocked: !isRelevant,
+                    score: relevanceScore
+                });
+
+                if (!isRelevant) {
+                    verdict = 'blocked';
+                }
+            }
+
+            displayFilterResult(verdict, detections, response, filteredResponse);
+            updateMetrics(verdict);
+        }
+
+        function detectCompetitorMentions(text) {
+            const mentions = [];
+            state.competitors.forEach(comp => {
+                const regex = new RegExp(comp, 'gi');
+                if (regex.test(text)) {
+                    mentions.push(comp);
+                }
+            });
+            return mentions;
+        }
+
+        function removeCompetitorMentions(text, mentions) {
+            let filtered = text;
+            mentions.forEach(comp => {
+                const regex = new RegExp(comp, 'gi');
+                filtered = filtered.replace(regex, '[REDACTED]');
+            });
+            return filtered;
+        }
+
+        function calculateRelevance(query, response) {
+            // Simplified semantic similarity simulation
+            const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+            const responseWords = response.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+            
+            let matches = 0;
+            queryWords.forEach(qw => {
+                if (responseWords.some(rw => rw.includes(qw) || qw.includes(rw))) {
+                    matches++;
+                }
+            });
+            
+            const base = queryWords.length > 0 ? matches / queryWords.length : 0;
+            const noise = Math.random() * 0.2 - 0.1;
+            return Math.max(0, Math.min(1, base + noise));
+        }
+
+        function displayFilterResult(verdict, detections, original, filtered) {
+            const container = document.getElementById('filterResult');
+            
+            const verdictClass = 'result-' + verdict;
+            const verdictText = verdict === 'passed' ? '✓ Response Approved' :
+                              verdict === 'filtered' ? '⚠ Response Filtered' :
+                              '✗ Response Blocked';
+            
+            let html = '<div class="filter-result">';
+            html += '<div class="result-header">';
+            html += '<span class="result-badge ' + verdictClass + '">' + verdictText + '</span>';
+            html += '<span style="color: #718096; font-size: 0.9rem;">' + detections.length + ' checks performed</span>';
+            html += '</div>';
+            
+            html += '<div class="detection-grid">';
+            detections.forEach(detection => {
+                const itemClass = detection.blocked ? 'detection-item blocked' : 'detection-item';
+                html += '<div class="' + itemClass + '">';
+                html += '<div class="detection-type">' + detection.type + '</div>';
+                html += '<div class="detection-details">' + detection.details + '</div>';
+                
+                if (detection.score !== undefined) {
+                    const scoreClass = detection.score >= 0.7 ? 'high' : detection.score >= 0.5 ? 'medium' : 'low';
+                    html += '<div class="relevance-score">';
+                    html += '<div class="score-bar">';
+                    html += '<div class="score-fill ' + scoreClass + '" style="width: ' + (detection.score * 100) + '%">';
+                    html += (detection.score * 100).toFixed(0) + '%';
+                    html += '</div></div></div>';
+                }
+                
+                html += '</div>';
+            });
+            html += '</div>';
+            
+            if (verdict === 'filtered') {
+                html += '<div style="margin-top: 1.5rem;">';
+                html += '<h4 style="color: #4a5568; margin-bottom: 0.5rem;">Filtered Response:</h4>';
+                html += '<div style="background: white; padding: 1rem; border-radius: 6px; border: 2px solid #e2e8f0;">';
+                html += filtered.replace(/\[REDACTED\]/g, '<span class="highlighted-text">[REDACTED]</span>');
+                html += '</div></div>';
+            }
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        function updateMetrics(verdict) {
+            state.metrics.total++;
+            if (verdict === 'filtered') state.metrics.competitor++;
+            if (verdict === 'blocked') state.metrics.relevance++;
+            if (verdict === 'passed') state.metrics.clean++;
+            
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-competitor').textContent = state.metrics.competitor;
+            document.getElementById('metric-relevance').textContent = state.metrics.relevance;
+            document.getElementById('metric-clean').textContent = state.metrics.clean;
+        }
+    </script>
+</body>
+</html>
