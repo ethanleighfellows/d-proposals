@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="URL Security & Reputation">
+    <meta name="demo:description" content="Extract and scan URLs in prompts and responses for malicious destinations with category-based policies">
+    <meta name="demo:category" content="security">
+    <meta name="demo:tags" content="Security,URL Scanning,Phishing,Malware Detection">
+    <title>URL Security & Reputation - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .policy-category {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #e2e8f0;
+        }
+
+        .policy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .policy-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1rem;
+        }
+
+        .policy-desc {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 1rem;
+        }
+
+        .action-selector {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn.active {
+            background: #0052CC;
+            color: white;
+            border-color: #0052CC;
+        }
+
+        .action-btn.allow.active {
+            background: #48bb78;
+            border-color: #48bb78;
+        }
+
+        .action-btn.block.active {
+            background: #e53e3e;
+            border-color: #e53e3e;
+        }
+
+        .action-btn.review.active {
+            background: #f6ad55;
+            border-color: #f6ad55;
+        }
+
+        .test-input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .test-input:focus {
+            outline: none;
+            border-color: #0052CC;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .scan-result {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .result-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .result-allowed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-blocked {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-review {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .url-grid {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .url-card {
+            background: white;
+            border-left: 4px solid #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+
+        .url-card.malware {
+            border-left-color: #e53e3e;
+        }
+
+        .url-card.phishing {
+            border-left-color: #dd6b20;
+        }
+
+        .url-card.suspicious {
+            border-left-color: #f6ad55;
+        }
+
+        .url-card.benign {
+            border-left-color: #48bb78;
+        }
+
+        .url-text {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            color: #0052CC;
+            word-break: break-all;
+            margin-bottom: 0.5rem;
+        }
+
+        .url-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .url-category {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .category-malware {
+            background: #fee;
+            color: #e53e3e;
+        }
+
+        .category-phishing {
+            background: #fff5f0;
+            color: #dd6b20;
+        }
+
+        .category-c2 {
+            background: #fef5e7;
+            color: #d97706;
+        }
+
+        .category-suspicious {
+            background: #fffaf0;
+            color: #f6ad55;
+        }
+
+        .category-benign {
+            background: #f0fff4;
+            color: #48bb78;
+        }
+
+        .reputation-score {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .reputation-bar {
+            flex: 1;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .reputation-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .reputation-fill.high {
+            background: #48bb78;
+        }
+
+        .reputation-fill.medium {
+            background: #f6ad55;
+        }
+
+        .reputation-fill.low {
+            background: #e53e3e;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .log-entry {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #718096;
+            margin-right: 1rem;
+        }
+
+        .log-category {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #e8f0fe;
+            color: #0052CC;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-verdict {
+            font-weight: 600;
+        }
+
+        .log-verdict.allowed {
+            color: #155724;
+        }
+
+        .log-verdict.blocked {
+            color: #721c24;
+        }
+
+        .log-verdict.review {
+            color: #856404;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #718096;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: #0052CC;
+        }
+
+        .tab.active {
+            color: #0052CC;
+            border-bottom-color: #0052CC;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🔗 URL Security & Reputation</h1>
+            <p>Extract and scan URLs in prompts and responses for malicious destinations with category-based policies</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Policy Configuration Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                    </svg>
+                </div>
+                <h2>URL Category Policies</h2>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">High-Risk Categories</h3>
+                    
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">🦠 Malware Hosting</span>
+                        </div>
+                        <p class="policy-desc">URLs hosting viruses, trojans, or malicious downloads</p>
+                        <div class="action-selector">
+                            <button class="action-btn allow" data-category="malware" data-action="allow">Allow</button>
+                            <button class="action-btn block active" data-category="malware" data-action="block">Block</button>
+                            <button class="action-btn review" data-category="malware" data-action="review">Review</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">🎣 Phishing Sites</span>
+                        </div>
+                        <p class="policy-desc">Credential harvesting and social engineering attacks</p>
+                        <div class="action-selector">
+                            <button class="action-btn allow" data-category="phishing" data-action="allow">Allow</button>
+                            <button class="action-btn block active" data-category="phishing" data-action="block">Block</button>
+                            <button class="action-btn review" data-category="phishing" data-action="review">Review</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">🕵️ C2 Infrastructure</span>
+                        </div>
+                        <p class="policy-desc">Command & control servers for botnets and malware</p>
+                        <div class="action-selector">
+                            <button class="action-btn allow" data-category="c2" data-action="allow">Allow</button>
+                            <button class="action-btn block active" data-category="c2" data-action="block">Block</button>
+                            <button class="action-btn review" data-category="c2" data-action="review">Review</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #4a5568;">Medium-Risk Categories</h3>
+                    
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">⚠️ Suspicious URLs</span>
+                        </div>
+                        <p class="policy-desc">Low reputation, newly registered, or uncategorized domains</p>
+                        <div class="action-selector">
+                            <button class="action-btn allow" data-category="suspicious" data-action="allow">Allow</button>
+                            <button class="action-btn block" data-category="suspicious" data-action="block">Block</button>
+                            <button class="action-btn review active" data-category="suspicious" data-action="review">Review</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">📰 News & Media</span>
+                        </div>
+                        <p class="policy-desc">Established news outlets and media organizations</p>
+                        <div class="action-selector">
+                            <button class="action-btn allow active" data-category="news" data-action="allow">Allow</button>
+                            <button class="action-btn block" data-category="news" data-action="block">Block</button>
+                            <button class="action-btn review" data-category="news" data-action="review">Review</button>
+                        </div>
+                    </div>
+
+                    <div class="policy-category">
+                        <div class="policy-header">
+                            <span class="policy-title">✅ Benign / Uncategorized</span>
+                        </div>
+                        <p class="policy-desc">Default action for unknown or safe URLs</p>
+                        <div class="action-selector">
+                            <button class="action-btn allow active" data-category="benign" data-action="allow">Allow</button>
+                            <button class="action-btn block" data-category="benign" data-action="block">Block</button>
+                            <button class="action-btn review" data-category="benign" data-action="review">Review</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- URL Scanner Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                </div>
+                <h2>URL Scanner</h2>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="prompt">Scan Prompt</button>
+                <button class="tab" data-tab="response">Scan LLM Response</button>
+            </div>
+
+            <!-- Prompt Tab -->
+            <div class="tab-content active" id="prompt-tab">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">User Prompt</label>
+                    <textarea id="promptInput" class="test-input" placeholder="Enter a prompt containing URLs to scan...
+
+Example:
+Check this link: https://example-phishing-site.com/login"></textarea>
+                </div>
+                <button class="btn btn-primary" id="scanPrompt">🔍 Extract & Scan URLs</button>
+                <button class="btn btn-secondary" id="loadPromptSample">Load Sample</button>
+                <div id="promptResult" class="hidden"></div>
+            </div>
+
+            <!-- Response Tab -->
+            <div class="tab-content" id="response-tab">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">LLM Response</label>
+                    <textarea id="responseInput" class="test-input" placeholder="Enter an LLM response containing URLs to scan...
+
+Example:
+Here are some resources:
+- Documentation: https://docs.example.com
+- Download: https://malware-hosting-site.com/file.exe"></textarea>
+                </div>
+                <button class="btn btn-primary" id="scanResponse">🔍 Extract & Scan URLs</button>
+                <button class="btn btn-secondary" id="loadResponseSample">Load Sample</button>
+                <div id="responseResult" class="hidden"></div>
+            </div>
+        </section>
+
+        <!-- Telemetry Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Telemetry & Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-total">0</div>
+                    <div class="metric-label">URLs Scanned</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-blocked">0</div>
+                    <div class="metric-label">Blocked</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-malicious">0%</div>
+                    <div class="metric-label">Malicious Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-latency">--</div>
+                    <div class="metric-label">Avg Latency</div>
+                </div>
+            </div>
+
+            <h3 style="margin: 2rem 0 1rem; color: #4a5568;">Scan Log</h3>
+            <div id="logContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            policies: {
+                malware: 'block',
+                phishing: 'block',
+                c2: 'block',
+                suspicious: 'review',
+                news: 'allow',
+                benign: 'allow'
+            },
+            metrics: {
+                total: 0,
+                blocked: 0,
+                malicious: 0,
+                totalLatency: 0
+            },
+            logs: []
+        };
+
+        // URL REPUTATION DATABASE (simulated)
+        const URL_DATABASE = {
+            'evil-phishing-site.com': { category: 'phishing', reputation: 0.05, vendor: 'VirusTotal' },
+            'malware-hosting-site.com': { category: 'malware', reputation: 0.02, vendor: 'Google Safe Browsing' },
+            'suspicious-new-domain.com': { category: 'suspicious', reputation: 0.45, vendor: 'URLhaus' },
+            'c2-server-example.com': { category: 'c2', reputation: 0.08, vendor: 'Threat Intel Feed' },
+            'docs.example.com': { category: 'benign', reputation: 0.98, vendor: 'VirusTotal' },
+            'news.example.com': { category: 'news', reputation: 0.95, vendor: 'Google Safe Browsing' },
+            'github.com': { category: 'benign', reputation: 0.99, vendor: 'URLhaus' },
+            'wikipedia.org': { category: 'benign', reputation: 0.99, vendor: 'VirusTotal' }
+        };
+
+        // SAMPLE CONTENT
+        const SAMPLES = {
+            prompt: {
+                safe: "Can you help me understand this documentation? https://docs.example.com/api-guide",
+                malicious: "Check out this amazing offer: https://evil-phishing-site.com/prize-claim\nAlso download from: https://malware-hosting-site.com/setup.exe"
+            },
+            response: {
+                safe: "Here are some helpful resources:\n- Wikipedia: https://wikipedia.org/article\n- GitHub: https://github.com/project",
+                malicious: "You can find more information at:\n- https://suspicious-new-domain.com/info\n- https://c2-server-example.com/data\n- https://news.example.com/article"
+            }
+        };
+
+        // POLICY HANDLERS
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const category = e.target.dataset.category;
+                const action = e.target.dataset.action;
+                
+                // Update UI
+                document.querySelectorAll(`[data-category="${category}"]`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                e.target.classList.add('active');
+                
+                // Update state
+                state.policies[category] = action;
+            });
+        });
+
+        // TAB NAVIGATION
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabName + '-tab').classList.add('active');
+            });
+        });
+
+        // SCAN HANDLERS
+        document.getElementById('scanPrompt').addEventListener('click', () => {
+            const text = document.getElementById('promptInput').value;
+            if (!text.trim()) {
+                alert('Please enter a prompt to scan');
+                return;
+            }
+            scanContent(text, 'prompt', 'promptResult');
+        });
+
+        document.getElementById('scanResponse').addEventListener('click', () => {
+            const text = document.getElementById('responseInput').value;
+            if (!text.trim()) {
+                alert('Please enter a response to scan');
+                return;
+            }
+            scanContent(text, 'response', 'responseResult');
+        });
+
+        // SAMPLE LOADERS
+        document.getElementById('loadPromptSample').addEventListener('click', () => {
+            const isMalicious = Math.random() > 0.5;
+            document.getElementById('promptInput').value = isMalicious ? SAMPLES.prompt.malicious : SAMPLES.prompt.safe;
+        });
+
+        document.getElementById('loadResponseSample').addEventListener('click', () => {
+            const isMalicious = Math.random() > 0.5;
+            document.getElementById('responseInput').value = isMalicious ? SAMPLES.response.malicious : SAMPLES.response.safe;
+        });
+
+        // URL EXTRACTION & SCANNING
+        function scanContent(text, source, resultId) {
+            const startTime = Date.now();
+            const urls = extractURLs(text);
+            
+            if (urls.length === 0) {
+                alert('No URLs found in the text');
+                return;
+            }
+
+            const scanResults = urls.map(url => scanURL(url));
+            const latency = Date.now() - startTime;
+            
+            displayResults(scanResults, source, latency, resultId);
+            updateMetrics(scanResults, latency);
+            logScan(source, scanResults);
+        }
+
+        function extractURLs(text) {
+            const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
+            const matches = text.match(urlRegex) || [];
+            return [...new Set(matches)]; // Remove duplicates
+        }
+
+        function scanURL(url) {
+            try {
+                const domain = new URL(url).hostname.replace('www.', '');
+                const reputation = URL_DATABASE[domain] || {
+                    category: 'benign',
+                    reputation: 0.7 + Math.random() * 0.2,
+                    vendor: 'VirusTotal'
+                };
+                
+                const action = state.policies[reputation.category] || 'allow';
+                
+                return {
+                    url: url,
+                    domain: domain,
+                    category: reputation.category,
+                    reputation: reputation.reputation,
+                    vendor: reputation.vendor,
+                    action: action
+                };
+            } catch (e) {
+                return {
+                    url: url,
+                    domain: 'invalid',
+                    category: 'benign',
+                    reputation: 0.5,
+                    vendor: 'N/A',
+                    action: 'allow'
+                };
+            }
+        }
+
+        function displayResults(results, source, latency, containerId) {
+            const container = document.getElementById(containerId);
+            
+            const blocked = results.filter(r => r.action === 'block').length;
+            const review = results.filter(r => r.action === 'review').length;
+            
+            let verdict = 'allowed';
+            if (blocked > 0) verdict = 'blocked';
+            else if (review > 0) verdict = 'review';
+            
+            const verdictClass = 'result-' + verdict;
+            const verdictText = verdict === 'allowed' ? '✓ All URLs Safe' :
+                              verdict === 'blocked' ? '✗ Malicious URLs Blocked' :
+                              '⚠ URLs Require Review';
+            
+            let html = '<div class="scan-result">';
+            html += '<div class="result-header">';
+            html += '<span class="result-badge ' + verdictClass + '">' + verdictText + '</span>';
+            html += '<span style="color: #718096; font-size: 0.9rem;">';
+            html += results.length + ' URLs | ' + latency + 'ms | Source: ' + source;
+            html += '</span></div>';
+            
+            html += '<div class="url-grid">';
+            results.forEach(result => {
+                const categoryClass = 'category-' + result.category;
+                const cardClass = 'url-card ' + result.category;
+                const repClass = result.reputation > 0.7 ? 'high' : (result.reputation > 0.4 ? 'medium' : 'low');
+                
+                html += '<div class="' + cardClass + '">';
+                html += '<div class="url-text">' + result.url + '</div>';
+                html += '<div class="url-meta">';
+                html += '<span class="url-category ' + categoryClass + '">' + result.category.toUpperCase() + '</span>';
+                html += '<span>Action: <strong>' + result.action.toUpperCase() + '</strong></span>';
+                html += '<span>Vendor: ' + result.vendor + '</span>';
+                html += '</div>';
+                html += '<div class="reputation-score">';
+                html += '<span style="font-size: 0.85rem; color: #718096;">Reputation:</span>';
+                html += '<div class="reputation-bar">';
+                html += '<div class="reputation-fill ' + repClass + '" style="width: ' + (result.reputation * 100) + '%"></div>';
+                html += '</div>';
+                html += '<span style="font-size: 0.85rem; font-weight: 600; color: #4a5568;">' + (result.reputation * 100).toFixed(0) + '%</span>';
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '</div></div>';
+            
+            container.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        function updateMetrics(results, latency) {
+            state.metrics.total += results.length;
+            state.metrics.blocked += results.filter(r => r.action === 'block').length;
+            state.metrics.malicious += results.filter(r => ['malware', 'phishing', 'c2'].includes(r.category)).length;
+            state.metrics.totalLatency += latency;
+            
+            const scans = state.logs.length || 1;
+            
+            document.getElementById('metric-total').textContent = state.metrics.total;
+            document.getElementById('metric-blocked').textContent = state.metrics.blocked;
+            document.getElementById('metric-malicious').textContent = 
+                ((state.metrics.malicious / state.metrics.total) * 100).toFixed(1) + '%';
+            document.getElementById('metric-latency').textContent = 
+                Math.round(state.metrics.totalLatency / scans) + 'ms';
+        }
+
+        function logScan(source, results) {
+            const timestamp = new Date().toLocaleTimeString();
+            const blocked = results.filter(r => r.action === 'block').length;
+            const malicious = results.filter(r => ['malware', 'phishing', 'c2'].includes(r.category));
+            
+            state.logs.unshift({
+                timestamp,
+                source,
+                urlCount: results.length,
+                blocked,
+                categories: malicious.map(m => m.category)
+            });
+            
+            if (state.logs.length > 10) state.logs = state.logs.slice(0, 10);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const container = document.getElementById('logContainer');
+            if (state.logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No scans logged yet</p>';
+                return;
+            }
+            
+            let html = '';
+            state.logs.forEach(log => {
+                const verdictClass = log.blocked > 0 ? 'blocked' : 'allowed';
+                const verdict = log.blocked > 0 ? 'BLOCKED' : 'CLEAN';
+                
+                html += '<div class="log-entry">';
+                html += '<span class="log-time">' + log.timestamp + '</span>';
+                html += '<span class="log-category">' + log.source.toUpperCase() + '</span>';
+                html += '<span class="log-verdict ' + verdictClass + '">' + verdict + '</span>';
+                html += '<span style="color: #718096;">' + log.urlCount + ' URLs';
+                if (log.categories.length > 0) {
+                    html += ' | ' + log.categories.join(', ');
+                }
+                html += '</span></div>';
+            });
+            container.innerHTML = html;
+        }
+
+        // Initialize
+        updateLogDisplay();
+    </script>
+</body>
+</html>
