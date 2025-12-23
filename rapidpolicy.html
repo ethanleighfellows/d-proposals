@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="demo:title" content="Rapid Example-Driven Policies">
+    <meta name="demo:description" content="Deploy content safety policies in minutes using few-shot examples without model retraining">
+    <meta name="demo:category" content="policy">
+    <meta name="demo:tags" content="Policy,Few-Shot,Rapid Response,Content Safety">
+    <title>Rapid Example-Driven Policies - Dynamo AI Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 82, 204, 0.15);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e8eef5;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .section-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a1a;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1a1a1a;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #0052CC;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .example-list {
+            margin-top: 1rem;
+        }
+
+        .example-item {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        .example-content {
+            flex: 1;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
+
+        .example-remove {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-left: 1rem;
+        }
+
+        .example-remove:hover {
+            background: #c53030;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            margin-right: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 82, 204, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #0052CC;
+            border: 2px solid #0052CC;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .progress-container {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            transition: width 0.3s ease;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .progress-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        .progress-icon.complete {
+            background: #48bb78;
+            color: white;
+        }
+
+        .progress-icon.active {
+            background: #0052CC;
+            color: white;
+        }
+
+        .policy-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .policy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .policy-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .policy-status {
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .policy-status.deployed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .policy-status.training {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .policy-meta {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        .policy-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .test-input {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .test-result {
+            background: white;
+            border-left: 4px solid #0052CC;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+        }
+
+        .result-verdict {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-verdict.match {
+            color: #e53e3e;
+        }
+
+        .result-verdict.nomatch {
+            color: #48bb78;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #0052CC 0%, #0066FF 100%);
+            transition: width 0.3s ease;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e2e8f0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0052CC;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>⚡ Rapid Example-Driven Policies</h1>
+            <p>Deploy content safety policies in minutes using few-shot examples without model retraining</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Policy Creation Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                </div>
+                <h2>Create Rapid Policy</h2>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Policy Name</label>
+                <input type="text" id="policyName" class="form-input" placeholder="e.g., crypto-scam-detection">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Category Description</label>
+                <textarea id="policyDescription" class="form-input" placeholder="Describe what this policy should detect..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Add Training Examples (5-20 recommended)</label>
+                <textarea id="exampleInput" class="form-input" placeholder="Paste an example of content this policy should flag..."></textarea>
+                <button class="btn btn-secondary" id="addExample" style="margin-top: 0.5rem;">+ Add Example</button>
+            </div>
+
+            <div id="exampleList" class="example-list"></div>
+
+            <div style="margin-top: 2rem;">
+                <button class="btn btn-primary" id="createPolicy" disabled>🚀 Generate & Deploy Policy</button>
+                <span id="exampleCount" style="color: #718096; margin-left: 1rem;">0 examples added (minimum 5)</span>
+            </div>
+
+            <div id="policyProgress" class="progress-container hidden"></div>
+        </section>
+
+        <!-- Active Policies Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h2>Active Rapid Policies</h2>
+            </div>
+
+            <div id="policyList"></div>
+        </section>
+
+        <!-- Test Classifier Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                </div>
+                <h2>Test Policy Classifier</h2>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Select Policy to Test</label>
+                <select id="testPolicySelect" class="form-input">
+                    <option value="">-- Select a policy --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Test Content</label>
+                <textarea id="testContent" class="form-input" placeholder="Enter content to classify..."></textarea>
+            </div>
+
+            <button class="btn btn-primary" id="testClassifier">Test Classification</button>
+
+            <div id="testResult" class="hidden"></div>
+        </section>
+
+        <!-- Metrics Section -->
+        <section class="demo-section">
+            <div class="section-header">
+                <div class="section-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+                <h2>Performance Metrics</h2>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-policies">0</div>
+                    <div class="metric-label">Active Policies</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-time">--</div>
+                    <div class="metric-label">Avg Deploy Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-precision">--</div>
+                    <div class="metric-label">Precision</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="metric-recall">--</div>
+                    <div class="metric-label">Recall</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // STATE MANAGEMENT
+        const state = {
+            examples: [],
+            policies: [],
+            metrics: {
+                totalPolicies: 0,
+                avgDeployTime: 0,
+                precision: 0,
+                recall: 0
+            }
+        };
+
+        // PRE-LOADED EXAMPLE POLICIES
+        const PRESET_POLICIES = [
+            {
+                id: 'demo-1',
+                name: 'crypto-scam-detection',
+                description: 'Detects cryptocurrency investment scams and pump-and-dump schemes',
+                examples: [
+                    'Get rich quick with Bitcoin! 1000x returns guaranteed in 24 hours!',
+                    'Join our exclusive crypto pump group. Next moonshot coin revealed tomorrow!',
+                    'DM me for insider crypto tips. Limited spots available!',
+                    'This altcoin will 100x next week. Buy now before its too late!'
+                ],
+                deployedAt: new Date(Date.now() - 3600000),
+                status: 'deployed',
+                stats: { precision: 0.94, recall: 0.88, fpRate: 0.03 }
+            }
+        ];
+
+        // Initialize with preset
+        state.policies = [...PRESET_POLICIES];
+        updatePolicyList();
+        updateMetrics();
+
+        // ADD EXAMPLE
+        document.getElementById('addExample').addEventListener('click', () => {
+            const input = document.getElementById('exampleInput');
+            const text = input.value.trim();
+            
+            if (!text) {
+                alert('Please enter an example');
+                return;
+            }
+
+            state.examples.push(text);
+            input.value = '';
+            updateExampleList();
+            updateCreateButton();
+        });
+
+        function updateExampleList() {
+            const container = document.getElementById('exampleList');
+            const countSpan = document.getElementById('exampleCount');
+            
+            if (state.examples.length === 0) {
+                container.innerHTML = '';
+                countSpan.textContent = '0 examples added (minimum 5)';
+                return;
+            }
+
+            let html = '';
+            state.examples.forEach((example, index) => {
+                html += `<div class="example-item">
+                    <div class="example-content">${example.substring(0, 100)}${example.length > 100 ? '...' : ''}</div>
+                    <button class="example-remove" onclick="removeExample(${index})">Remove</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+
+            const remaining = Math.max(0, 5 - state.examples.length);
+            countSpan.textContent = state.examples.length + ' examples added' + 
+                (remaining > 0 ? ` (${remaining} more needed)` : ' ✓');
+        }
+
+        function removeExample(index) {
+            state.examples.splice(index, 1);
+            updateExampleList();
+            updateCreateButton();
+        }
+
+        function updateCreateButton() {
+            const btn = document.getElementById('createPolicy');
+            btn.disabled = state.examples.length < 5;
+        }
+
+        // CREATE POLICY
+        document.getElementById('createPolicy').addEventListener('click', () => {
+            const name = document.getElementById('policyName').value.trim();
+            const description = document.getElementById('policyDescription').value.trim();
+
+            if (!name) {
+                alert('Please enter a policy name');
+                return;
+            }
+
+            if (!description) {
+                alert('Please enter a policy description');
+                return;
+            }
+
+            simulatePolicyCreation(name, description, [...state.examples]);
+        });
+
+        function simulatePolicyCreation(name, description, examples) {
+            const progressDiv = document.getElementById('policyProgress');
+            progressDiv.classList.remove('hidden');
+
+            const steps = [
+                { label: 'Analyzing examples...', duration: 800 },
+                { label: 'Generating few-shot classifier...', duration: 1200 },
+                { label: 'Validating policy...', duration: 600 },
+                { label: 'Deploying to runtime...', duration: 400 }
+            ];
+
+            let currentStep = 0;
+            const startTime = Date.now();
+
+            function updateProgress() {
+                const progress = ((currentStep + 1) / steps.length) * 100;
+                
+                let html = '<div class="progress-bar"><div class="progress-fill" style="width: ' + progress + '%"></div></div>';
+                
+                steps.forEach((step, index) => {
+                    const iconClass = index < currentStep ? 'complete' : (index === currentStep ? 'active' : '');
+                    const icon = index < currentStep ? '✓' : (index === currentStep ? '⏳' : '○');
+                    html += '<div class="progress-step">';
+                    html += '<div class="progress-icon ' + iconClass + '">' + icon + '</div>';
+                    html += '<div>' + step.label + '</div>';
+                    html += '</div>';
+                });
+
+                progressDiv.innerHTML = html;
+
+                if (currentStep < steps.length) {
+                    setTimeout(() => {
+                        currentStep++;
+                        updateProgress();
+                    }, steps[currentStep].duration);
+                } else {
+                    const deployTime = Math.round((Date.now() - startTime) / 1000);
+                    completeDeployment(name, description, examples, deployTime);
+                }
+            }
+
+            updateProgress();
+        }
+
+        function completeDeployment(name, description, examples, deployTime) {
+            const policy = {
+                id: 'policy-' + Date.now(),
+                name: name,
+                description: description,
+                examples: examples,
+                deployedAt: new Date(),
+                deployTime: deployTime,
+                status: 'deployed',
+                stats: {
+                    precision: 0.85 + Math.random() * 0.1,
+                    recall: 0.80 + Math.random() * 0.15,
+                    fpRate: 0.02 + Math.random() * 0.03
+                }
+            };
+
+            state.policies.push(policy);
+            updatePolicyList();
+            updateMetrics();
+
+            // Clear form
+            document.getElementById('policyName').value = '';
+            document.getElementById('policyDescription').value = '';
+            state.examples = [];
+            updateExampleList();
+            updateCreateButton();
+
+            setTimeout(() => {
+                document.getElementById('policyProgress').classList.add('hidden');
+                alert('Policy deployed successfully in ' + deployTime + ' seconds!');
+            }, 500);
+        }
+
+        function updatePolicyList() {
+            const container = document.getElementById('policyList');
+            const select = document.getElementById('testPolicySelect');
+
+            if (state.policies.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #718096; padding: 2rem;">No policies deployed yet</p>';
+                select.innerHTML = '<option value="">-- No policies available --</option>';
+                return;
+            }
+
+            let html = '';
+            let selectHtml = '<option value="">-- Select a policy --</option>';
+
+            state.policies.forEach((policy, index) => {
+                const timeAgo = getTimeAgo(policy.deployedAt);
+                
+                html += '<div class="policy-card">';
+                html += '<div class="policy-header">';
+                html += '<div>';
+                html += '<div class="policy-title">' + policy.name + '</div>';
+                html += '<div class="policy-meta">Deployed ' + timeAgo;
+                if (policy.deployTime) {
+                    html += ' (in ' + policy.deployTime + 's)';
+                }
+                html += ' | ' + policy.examples.length + ' examples</div>';
+                html += '</div>';
+                html += '<div class="policy-status deployed">Deployed</div>';
+                html += '</div>';
+                html += '<div style="color: #4a5568; font-size: 0.9rem;">' + policy.description + '</div>';
+                html += '<div style="margin-top: 1rem; font-size: 0.85rem; color: #718096;">';
+                html += '<strong>Performance:</strong> ';
+                html += 'Precision: ' + (policy.stats.precision * 100).toFixed(1) + '% | ';
+                html += 'Recall: ' + (policy.stats.recall * 100).toFixed(1) + '% | ';
+                html += 'FP Rate: ' + (policy.stats.fpRate * 100).toFixed(2) + '%';
+                html += '</div>';
+                html += '</div>';
+
+                selectHtml += '<option value="' + index + '">' + policy.name + '</option>';
+            });
+
+            container.innerHTML = html;
+            select.innerHTML = selectHtml;
+        }
+
+        // TEST CLASSIFIER
+        document.getElementById('testClassifier').addEventListener('click', () => {
+            const policyIndex = document.getElementById('testPolicySelect').value;
+            const content = document.getElementById('testContent').value.trim();
+
+            if (policyIndex === '') {
+                alert('Please select a policy to test');
+                return;
+            }
+
+            if (!content) {
+                alert('Please enter content to test');
+                return;
+            }
+
+            const policy = state.policies[policyIndex];
+            testContent(policy, content);
+        });
+
+        function testContent(policy, content) {
+            // Simulate few-shot classification
+            const isMatch = simulateClassification(policy.examples, content);
+            const confidence = 0.7 + Math.random() * 0.25;
+
+            const resultDiv = document.getElementById('testResult');
+            const verdictClass = isMatch ? 'match' : 'nomatch';
+            const verdictText = isMatch ? '🚫 FLAGGED' : '✓ CLEAN';
+
+            let html = '<div class="test-result">';
+            html += '<div class="result-verdict ' + verdictClass + '">' + verdictText + '</div>';
+            html += '<div style="color: #718096; font-size: 0.9rem; margin-bottom: 0.5rem;">Policy: ' + policy.name + '</div>';
+            html += '<div style="font-size: 0.85rem; color: #4a5568;">Confidence: ' + (confidence * 100).toFixed(1) + '%</div>';
+            html += '<div class="confidence-bar"><div class="confidence-fill" style="width: ' + (confidence * 100) + '%"></div></div>';
+            html += '</div>';
+
+            resultDiv.innerHTML = html;
+            resultDiv.classList.remove('hidden');
+        }
+
+        function simulateClassification(examples, content) {
+            // Simple keyword-based simulation
+            const exampleWords = examples.join(' ').toLowerCase().split(/\s+/);
+            const contentWords = content.toLowerCase().split(/\s+/);
+            
+            let matchCount = 0;
+            contentWords.forEach(word => {
+                if (word.length > 3 && exampleWords.includes(word)) {
+                    matchCount++;
+                }
+            });
+
+            return matchCount > 2;
+        }
+
+        function updateMetrics() {
+            document.getElementById('metric-policies').textContent = state.policies.length;
+
+            if (state.policies.length > 0) {
+                const avgTime = state.policies.reduce((sum, p) => sum + (p.deployTime || 0), 0) / state.policies.length;
+                document.getElementById('metric-time').textContent = avgTime.toFixed(0) + 's';
+
+                const avgPrecision = state.policies.reduce((sum, p) => sum + p.stats.precision, 0) / state.policies.length;
+                document.getElementById('metric-precision').textContent = (avgPrecision * 100).toFixed(1) + '%';
+
+                const avgRecall = state.policies.reduce((sum, p) => sum + p.stats.recall, 0) / state.policies.length;
+                document.getElementById('metric-recall').textContent = (avgRecall * 100).toFixed(1) + '%';
+            }
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return seconds + ' seconds ago';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + ' minute' + (minutes !== 1 ? 's' : '') + ' ago';
+            const hours = Math.floor(minutes / 60);
+            return hours + ' hour' + (hours !== 1 ? 's' : '') + ' ago';
+        }
+
+        // Make removeExample global
+        window.removeExample = removeExample;
+    </script>
+</body>
+</html>
