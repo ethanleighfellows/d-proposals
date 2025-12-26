@@ -26,22 +26,11 @@ Unauthorized use or reproduction **in any form** is expressly forbidden without 
 
 This repository **does not** represent or contain proprietary competitor data; it is based solely on **publicly available research and observable feature behavior**.
 
-
----
-
-## Demo Topics
-
-- Prompt Injection Mitigation
-- Context-Level Isolation Controls
-- Sensitive Data Redaction
-- Jailbreak and Style Drift Containment
-- Competitor Guardrail Response Patterns (Observed)
-
 ---
 
 ## Disclaimer
 
-All demonstrations reflect **independent experimentation and reverse-engineered behavioral insights**.  
+All demonstrations reflect **independent experimentation**.  
 They are *not endorsements, certifications, or internal implementations* of any third-party product.
 
 ---
