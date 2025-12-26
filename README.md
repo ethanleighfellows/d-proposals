@@ -6,14 +6,12 @@
 
 ## Overview
 
-This repository presents a curated set of **AI security feature demos** designed to illustrate how different guardrail systems handle prompt injection, jailbreaks, data exfiltration attempts, and adversarial attacks.
+This repository presents a curated set of AI security feature demonstrations that reflect the current feature offerings within the AI security ecosystem, showcasing how different guardrail systems address prompt injection, jailbreak attempts, data exfiltration, and other adversarial behaviors.
 
 Each demo highlights:
 - Implementation examples of protection strategies.
-- Comparative notes from **competitor product research**.
-- Observations about **defensive behavior** across models and providers.
 
-These demos are provided **strictly for educational and analytical purposes** to advance understanding of guardrail design—not for reuse, adaptation, or replication in other systems.
+These demos are provided **strictly for advancing understanding of guardrail design**.
 
 ---
 
